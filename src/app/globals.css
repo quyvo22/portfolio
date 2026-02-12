@@ -4,25 +4,26 @@
 
 @layer base {
   :root {
-    --surface: 40 20% 97%;
-    --surface-raised: 40 15% 100%;
-    --surface-overlay: 40 10% 94%;
-    --ink: 30 10% 12%;
-    --ink-muted: 30 8% 40%;
-    --ink-faint: 30 5% 60%;
-    --border: 30 10% 88%;
-    --ring: 28 90% 52%;
+    /* BRAND PALETTE — NAVY + LIME */
+    --surface: 219 69% 14%;           /* nền chính navy */
+    --surface-raised: 219 45% 18%;    /* card/layer nổi */
+    --surface-overlay: 219 40% 22%;   /* overlay */
+    --ink: 225 30% 92%;               /* text sáng */
+    --ink-muted: 225 20% 70%;         /* text nhạt */
+    --ink-faint: 225 15% 55%;         /* text mờ */
+    --border: 219 30% 28%;            /* border navy nhạt */
+    --ring: 95 100% 65%;              /* lime accent */
   }
 
   .dark {
-    --surface: 30 8% 8%;
-    --surface-raised: 30 6% 12%;
-    --surface-overlay: 30 5% 16%;
-    --ink: 35 15% 92%;
-    --ink-muted: 30 8% 62%;
-    --ink-faint: 30 5% 42%;
-    --border: 30 6% 22%;
-    --ring: 28 85% 58%;
+    --surface: 219 69% 12%;           
+    --surface-raised: 219 45% 16%;
+    --surface-overlay: 219 40% 20%;
+    --ink: 225 30% 92%;
+    --ink-muted: 225 20% 70%;
+    --ink-faint: 225 15% 55%;
+    --border: 219 30% 28%;
+    --ring: 95 100% 65%;              /* accent giữ nguyên */
   }
 
   html {
@@ -44,12 +45,12 @@
   p  { @apply text-base md:text-lg leading-relaxed; }
 
   *:focus-visible {
-    @apply outline-2 outline-offset-2 outline-accent-500 rounded-sm;
+    @apply outline-2 outline-offset-2 outline-[hsl(var(--ring))] rounded-sm;
     outline-style: solid;
   }
 
   .skip-link {
-    @apply absolute -top-full left-4 z-[9999] bg-accent-500 text-white
+    @apply absolute -top-full left-4 z-[9999] bg-[hsl(var(--ring))] text-white
            px-4 py-2 rounded-b-lg font-sans text-sm font-medium;
     @apply focus:top-0 transition-all duration-200;
   }
@@ -66,7 +67,7 @@
 
 @layer components {
   .grid-container {
-    @apply w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+   -full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
   }
 
   .grid-12 {
@@ -79,7 +80,7 @@
   }
 
   .card:hover {
-    @apply shadow-lg border-accent-200 dark:border-accent-800;
+    @apply shadow-lg border-[hsl(var(--ring))]/40;
     transform: translateY(-2px);
   }
 
