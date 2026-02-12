@@ -2,20 +2,19 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ================================
+   BASE LAYER (THEME + TYPOGRAPHY)
+   ================================ */
 @layer base {
-  /* ============================================
-     BRAND PALETTE — NAVY + LIME
-     ============================================ */
-
   :root {
-    --surface: 219 69% 14%;           /* nền chính navy */
-    --surface-raised: 219 45% 18%;    /* card / layer nổi */
-    --surface-overlay: 219 40% 22%;   /* overlay */
-    --ink: 225 30% 92%;               /* text sáng */
-    --ink-muted: 225 20% 70%;         /* text nhạt */
-    --ink-faint: 225 15% 55%;         /* text mờ */
-    --border: 219 30% 28%;            /* border navy nhạt */
-    --ring: 95 100% 65%;              /* accent LIME */
+    --surface: 219 69% 14%;
+    --surface-raised: 219 45% 18%;
+    --surface-overlay: 219 40% 22%;
+    --ink: 225 30% 92%;
+    --ink-muted: 225 20% 70%;
+    --ink-faint: 225 15% 55%;
+    --border: 219 30% 28%;
+    --ring: 95 100% 65%;
   }
 
   .dark {
@@ -34,11 +33,9 @@
   }
 
   body {
-    @apply bg-surface text-ink font-sans antialiased;
-    @apply transition-colors duration-300;
+    @apply bg-surface text-ink font-sans antialiased transition-colors duration-300;
   }
 
-  /* Typography scale */
   h1, h2, h3, h4, h5, h6 {
     @apply font-serif tracking-tight;
   }
@@ -49,22 +46,19 @@
   h4 { @apply text-xl md:text-2xl font-semibold; }
   p  { @apply text-base md:text-lg leading-relaxed; }
 
-  /* Focus ring accessible */
   *:focus-visible {
     @apply outline-2 outline-offset-2 rounded-sm;
     outline-color: hsl(var(--ring));
     outline-style: solid;
   }
 
-  /* Skip link */
   .skip-link {
     @apply absolute -top-full left-4 z-[9999]
-           bg-[hsl(var(--ring))] text-white px-4 py-2
-           rounded-b-lg font-sans text-sm font-medium;
-    @apply focus:top-0 transition-all duration-200;
+           bg-[hsl(var(--ring))] text-white px-4 py-2 rounded-b-lg
+           font-sans text-sm font-medium transition-all duration-200;
+    @apply focus:top-0;
   }
 
-  /* Reduce motion */
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after {
       animation-duration: 0.01ms !important;
@@ -75,20 +69,21 @@
   }
 }
 
+/* ================================
+   COMPONENTS
+   ================================ */
 @layer components {
-  /* Grid container fixed (đã sửa lỗi build) */
   .grid-container {
     @apply w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
   }
 
   .grid-12 {
-    @apply grid grid-cols-4 sm:grid-cols-8 lg:grid-cols-12
-           gap-4 lg:gap-6;
+    @apply grid grid-cols-4 sm:grid-cols-8 lg:grid-cols-12 gap-4 lg:gap-6;
   }
 
   .card {
-    @apply bg-surface-raised border border-border rounded-xl
-           overflow-hidden transition-all duration-300 ease-out;
+    @apply bg-surface-raised border border-border rounded-xl overflow-hidden
+           transition-all duration-300 ease-out;
   }
 
   .card:hover {
@@ -103,6 +98,9 @@
   }
 }
 
+/* ================================
+   UTILITIES
+   ================================ */
 @layer utilities {
   .text-balance {
     text-wrap: balance;
