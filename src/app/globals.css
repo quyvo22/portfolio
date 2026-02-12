@@ -1,9 +1,108 @@
-[FILE PATCH] src/app/globals.css
---- a/src/app/globals.css
-+++ b/src/app/globals.css
-@@
--/* (toàn bộ nội dung cũ) */
-+@tailwind base;
-+@tailwind components;
-+@tailwind utilities;
-``
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ================================
+   BASE THEME (NAVY + LIME)
+   ================================ */
+@layer base {
+  :root {
+    --surface: 219 69% 14%;
+    --surface-raised: 219 45% 18%;
+    --surface-overlay: 219 40% 22%;
+    --ink: 225 30% 92%;
+    --ink-muted: 225 20% 70%;
+    --ink-faint: 225 15% 55%;
+    --border: 219 30% 28%;
+    --ring: 95 100% 65%;
+  }
+
+  .dark {
+    --surface: 219 69% 12%;
+    --surface-raised: 219 45% 16%;
+    --surface-overlay: 219 40% 20%;
+    --ink: 225 30% 92%;
+    --ink-muted: 225 20% 70%;
+    --ink-faint: 225 15% 55%;
+    --border: 219 30% 28%;
+    --ring: 95 100% 65%;
+  }
+
+  html {
+    @apply scroll-smooth;
+  }
+
+  body {
+    @apply bg-surface text-ink font-sans antialiased transition-colors duration-300;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-serif tracking-tight;
+  }
+
+  h1 { @apply text-4xl md:text-5xl lg:text-6xl font-bold leading-[1.1]; }
+  h2 { @apply text-3xl md:text-4xl font-bold leading-tight; }
+  h3 { @apply text-2xl md:text-3xl font-semibold leading-snug; }
+  h4 { @apply text-xl md:text-2xl font-semibold; }
+  p  { @apply text-base md:text-lg leading-relaxed; }
+
+  *:focus-visible {
+    @apply outline-2 outline-offset-2 rounded-sm;
+    outline-color: hsl(var(--ring));
+    outline-style: solid;
+  }
+
+  .skip-link {
+    @apply absolute -top-full left-4 z-[9999]
+           bg-[hsl(var(--ring))] text-white px-4 py-2 rounded-b-lg
+           font-sans text-sm font-medium transition-all duration-200;
+    @apply focus:top-0;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+/* ================================
+   COMPONENTS
+   ================================ */
+@layer components {
+  .grid-container {
+    @apply w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+  }
+
+  .grid-12 {
+    @apply grid grid-cols-4 sm:grid-cols-8 lg:grid-cols-12 gap-4 lg:gap-6;
+  }
+
+  .card {
+    @apply bg-surface-raised border border-border rounded-xl overflow-hidden
+           transition-all duration-300 ease-out;
+  }
+
+  .card:hover {
+    @apply shadow-lg border-[hsl(var(--ring))]/40;
+    transform: translateY(-2px);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .card:hover {
+      transform: none;
+    }
+  }
+}
+
+/* ================================
+   UTILITIES
+   ================================ */
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}
