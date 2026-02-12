@@ -1,0 +1,54 @@
+{
+  "nav": {
+    "home": "Home",
+    "portfolio": "Portfolio",
+    "blog": "Blog",
+    "about": "About",
+    "admin": "Admin",
+    "skipToContent": "Skip to main content"
+  },
+  "home": {
+    "heroTitle": "Design & Create",
+    "heroSubtitle": "Architecture portfolio — showcasing PDF & 3D projects with full interactive experience.",
+    "featuredProjects": "Featured Projects",
+    "viewAll": "View all"
+  },
+  "portfolio": {
+    "title": "Project Portfolio",
+    "description": "A collection of design projects, technical drawings, and 3D models.",
+    "filterAll": "All",
+    "filterPdf": "PDF Drawings",
+    "filter3d": "3D Models"
+  },
+  "project": {
+    "viewPdf": "View Drawing",
+    "view3d": "View 3D Model",
+    "details": "Project Details",
+    "backToPortfolio": "← Back to portfolio"
+  },
+  "blog": {
+    "title": "Blog",
+    "description": "Sharing knowledge, experience, and perspectives on design & architecture.",
+    "readMore": "Read more"
+  },
+  "about": {
+    "title": "About",
+    "description": "Information about the studio, design philosophy, and team.",
+    "contact": "Contact"
+  },
+  "admin": {
+    "title": "Admin",
+    "loginRequired": "Please sign in to continue.",
+    "loginButton": "Sign in"
+  },
+  "common": {
+    "lightMode": "Light mode",
+    "darkMode": "Dark mode",
+    "language": "Language",
+    "loading": "Loading..."
+  },
+  "footer": {
+    "copyright": "© 2025 Portfolio Studio. All rights reserved.",
+    "builtWith": "Built with Next.js & TypeScript"
+  }
+}

@@ -1,0 +1,7 @@
+<svg width="1200" height="630" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="630" fill="#f5f0eb"/>
+  <rect x="0" y="0" width="1200" height="4" fill="#ee7a12"/>
+  <text x="600" y="280" text-anchor="middle" font-family="Georgia, serif" font-size="52" font-weight="bold" fill="#2d2620">Portfolio Studio</text>
+  <text x="600" y="340" text-anchor="middle" font-family="system-ui, sans-serif" font-size="22" fill="#8a7e72">Thiết kế &amp; Kiến trúc</text>
+  <text x="600" y="380" text-anchor="middle" font-family="system-ui, sans-serif" font-size="16" fill="#b0a696">PDF &amp; 3D Interactive Portfolio</text>
+</svg>

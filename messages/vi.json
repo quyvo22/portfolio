@@ -1,0 +1,54 @@
+{
+  "nav": {
+    "home": "Trang chủ",
+    "portfolio": "Dự án",
+    "blog": "Bài viết",
+    "about": "Giới thiệu",
+    "admin": "Quản trị",
+    "skipToContent": "Chuyển đến nội dung chính"
+  },
+  "home": {
+    "heroTitle": "Thiết kế & Sáng tạo",
+    "heroSubtitle": "Portfolio kiến trúc — nơi trưng bày các dự án PDF & 3D với trải nghiệm tương tác đầy đủ.",
+    "featuredProjects": "Dự án nổi bật",
+    "viewAll": "Xem tất cả"
+  },
+  "portfolio": {
+    "title": "Danh mục dự án",
+    "description": "Tổng hợp các dự án thiết kế, bản vẽ kỹ thuật và mô hình 3D.",
+    "filterAll": "Tất cả",
+    "filterPdf": "Bản vẽ PDF",
+    "filter3d": "Mô hình 3D"
+  },
+  "project": {
+    "viewPdf": "Xem bản vẽ",
+    "view3d": "Xem mô hình 3D",
+    "details": "Chi tiết dự án",
+    "backToPortfolio": "← Quay lại danh mục"
+  },
+  "blog": {
+    "title": "Bài viết",
+    "description": "Chia sẻ kiến thức, kinh nghiệm và góc nhìn về thiết kế & kiến trúc.",
+    "readMore": "Đọc tiếp"
+  },
+  "about": {
+    "title": "Giới thiệu",
+    "description": "Thông tin về studio, triết lý thiết kế và đội ngũ.",
+    "contact": "Liên hệ"
+  },
+  "admin": {
+    "title": "Quản trị",
+    "loginRequired": "Vui lòng đăng nhập để tiếp tục.",
+    "loginButton": "Đăng nhập"
+  },
+  "common": {
+    "lightMode": "Chế độ sáng",
+    "darkMode": "Chế độ tối",
+    "language": "Ngôn ngữ",
+    "loading": "Đang tải..."
+  },
+  "footer": {
+    "copyright": "© 2025 Portfolio Studio. Mọi quyền được bảo lưu.",
+    "builtWith": "Xây dựng với Next.js & TypeScript"
+  }
+}
