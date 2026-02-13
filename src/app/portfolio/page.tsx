@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { projects } from "@/data/mock";
-import { PortfolioFilter } from "./portfolio-filter";
+import { PortfolioFilter } from "@/components/ui/portfolio-filter";
 
 export const metadata: Metadata = {
   title: "Danh mục dự án",

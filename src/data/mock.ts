@@ -1,21 +1,6 @@
-export interface Project {
-  slug: string;
-  title: string;
-  description: string;
-  category: "pdf" | "3d" | "both";
-  thumbnail: string;
-  year: number;
-  tags: string[];
-}
+import type { Project, BlogPost } from "@/types";
 
-export interface BlogPost {
-  slug: string;
-  title: string;
-  excerpt: string;
-  date: string;
-  readingTime: string;
-  tags: string[];
-}
+export type { Project, BlogPost };
 
 export const projects: Project[] = [
   {

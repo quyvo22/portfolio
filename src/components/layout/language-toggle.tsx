@@ -1,16 +1,26 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Globe } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+function getLocaleCookie(): "vi" | "en" {
+  const match = document.cookie.match(/(?:^|;\s*)locale=(\w+)/);
+  return match?.[1] === "en" ? "en" : "vi";
+}
 
 export function LanguageToggle() {
   const [locale, setLocale] = useState<"vi" | "en">("vi");
 
+  useEffect(() => {
+    setLocale(getLocaleCookie());
+  }, []);
+
   const toggle = () => {
     const next = locale === "vi" ? "en" : "vi";
+    document.cookie = `locale=${next};path=/;max-age=${60 * 60 * 24 * 365};samesite=lax`;
     setLocale(next);
-    // Phase 2: route-based i18n switching hoàn chỉnh
+    window.location.reload();
   };
 
   return (

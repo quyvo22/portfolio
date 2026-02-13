@@ -26,7 +26,7 @@ export const metadata: Metadata = {
   },
   description:
     "Portfolio kiến trúc với trình xem PDF & 3D tương tác. Trưng bày dự án, bản vẽ kỹ thuật và mô hình ba chiều.",
-  metadataBase: new URL("http://localhost:3000"),
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"),
   openGraph: {
     type: "website",
     locale: "vi_VN",

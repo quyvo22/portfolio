@@ -1,11 +1,6 @@
-import type { Metadata } from "next";
 import { Lock } from "lucide-react";
 
-export const metadata: Metadata = {
-  title: "Quản trị",
-  description: "Trang quản trị — yêu cầu đăng nhập.",
-  robots: { index: false, follow: false },
-};
+// Metadata is defined in admin/layout.tsx
 
 export default function AdminPage() {
   return (
@@ -24,11 +19,11 @@ export default function AdminPage() {
           disabled
           className="mt-8 inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-lg bg-accent-500 text-white text-sm font-medium opacity-60 cursor-not-allowed"
         >
-          Đăng nhập (Phase 7)
+          Đăng nhập
         </button>
 
         <p className="mt-4 text-xs text-ink-faint">
-          Chức năng xác thực sẽ được triển khai ở Phase 7 với Auth.js.
+          Đăng nhập bằng Google hoặc Email Magic Link.
         </p>
       </div>
     </section>

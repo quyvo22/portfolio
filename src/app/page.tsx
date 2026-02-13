@@ -2,7 +2,7 @@ import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { projects } from "@/data/mock";
 import { ProjectCard } from "@/components/ui/project-card";
-import { HeroSection } from "./hero-section";
+import { HeroSection } from "@/components/sections/hero-section";
 
 export default function HomePage() {
   const featured = projects.slice(0, 4);
