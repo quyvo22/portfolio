@@ -1,13 +1,13 @@
 import Link from "next/link";
-import type { Project } from "@/data/mock";
+import type { Project } from "@/types";
 import { cn } from "@/lib/utils";
 import { FileText, Box } from "lucide-react";
 
-const categoryIcon = { pdf: FileText, "3d": Box, both: Box };
-const categoryLabel = { pdf: "PDF", "3d": "3D", both: "PDF + 3D" };
+const categoryIcon: Record<string, typeof FileText> = { pdf: FileText, "3d": Box, both: Box };
+const categoryLabel: Record<string, string> = { pdf: "PDF", "3d": "3D", both: "PDF + 3D" };
 
 export function ProjectCard({ project }: { project: Project }) {
-  const Icon = categoryIcon[project.category];
+  const Icon = categoryIcon[project.category] || Box;
 
   return (
     <Link href={`/project/${project.slug}`} className="group card block">
@@ -22,7 +22,7 @@ export function ProjectCard({ project }: { project: Project }) {
             "bg-accent-500/90 text-white"
           )}
         >
-          {categoryLabel[project.category]}
+          {categoryLabel[project.category] || project.category}
         </span>
       </div>
 

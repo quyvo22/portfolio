@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { projects } from "@/data/mock";
+import { getPublishedProjects } from "@/lib/data";
 import { PortfolioFilter } from "@/components/ui/portfolio-filter";
 
 export const metadata: Metadata = {
@@ -8,7 +8,10 @@ export const metadata: Metadata = {
     "Tổng hợp các dự án thiết kế, bản vẽ kỹ thuật và mô hình 3D.",
 };
 
-export default function PortfolioPage() {
+export const dynamic = "force-dynamic";
+
+export default async function PortfolioPage() {
+  const projects = await getPublishedProjects();
   return (
     <section className="grid-container py-16">
       <div className="mb-10">

@@ -1,7 +1,8 @@
-// Legacy mock data — kept as reference. DB is now the source of truth.
-// Use prisma/seed.ts to populate the database.
+import { PrismaClient } from "@prisma/client";
 
-export const projects = [
+const prisma = new PrismaClient();
+
+const projects = [
   {
     slug: "demo-project",
     title: "Nhà phố hiện đại Thảo Điền",
@@ -10,7 +11,8 @@ export const projects = [
     category: "both",
     thumbnail: "/og-placeholder.svg",
     year: 2024,
-    tags: ["Nhà ở", "Hiện đại", "Xanh"],
+    tags: JSON.stringify(["Nhà ở", "Hiện đại", "Xanh"]),
+    published: true,
   },
   {
     slug: "villa-da-lat",
@@ -20,7 +22,8 @@ export const projects = [
     category: "pdf",
     thumbnail: "/og-placeholder.svg",
     year: 2024,
-    tags: ["Biệt thự", "Nghỉ dưỡng"],
+    tags: JSON.stringify(["Biệt thự", "Nghỉ dưỡng"]),
+    published: true,
   },
   {
     slug: "office-tower",
@@ -30,7 +33,8 @@ export const projects = [
     category: "3d",
     thumbnail: "/og-placeholder.svg",
     year: 2023,
-    tags: ["Văn phòng", "Cao tầng"],
+    tags: JSON.stringify(["Văn phòng", "Cao tầng"]),
+    published: true,
   },
   {
     slug: "museum-concept",
@@ -40,7 +44,8 @@ export const projects = [
     category: "both",
     thumbnail: "/og-placeholder.svg",
     year: 2023,
-    tags: ["Công trình công cộng", "Concept"],
+    tags: JSON.stringify(["Công trình công cộng", "Concept"]),
+    published: true,
   },
   {
     slug: "cafe-saigon",
@@ -50,7 +55,8 @@ export const projects = [
     category: "pdf",
     thumbnail: "/og-placeholder.svg",
     year: 2022,
-    tags: ["Cải tạo", "F&B"],
+    tags: JSON.stringify(["Cải tạo", "F&B"]),
+    published: true,
   },
   {
     slug: "bridge-concept",
@@ -60,36 +66,74 @@ export const projects = [
     category: "3d",
     thumbnail: "/og-placeholder.svg",
     year: 2022,
-    tags: ["Hạ tầng", "Landscape"],
+    tags: JSON.stringify(["Hạ tầng", "Landscape"]),
+    published: true,
   },
 ];
 
-export const blogPosts = [
+const blogPosts = [
   {
     slug: "kien-truc-ben-vung",
     title: "Kiến trúc bền vững trong bối cảnh Việt Nam",
     excerpt:
       "Tìm hiểu cách áp dụng nguyên tắc thiết kế bền vững phù hợp khí hậu nhiệt đới và văn hóa địa phương.",
-    date: "2024-12-15",
+    content: "",
+    date: new Date("2024-12-15"),
     readingTime: "8 phút",
-    tags: ["Bền vững", "Kiến trúc xanh"],
+    tags: JSON.stringify(["Bền vững", "Kiến trúc xanh"]),
+    published: true,
   },
   {
     slug: "bim-workflow",
     title: "Quy trình BIM hiệu quả cho studio nhỏ",
     excerpt:
       "Chia sẻ kinh nghiệm triển khai BIM ở quy mô studio 5–10 người, tối ưu chi phí và thời gian.",
-    date: "2024-11-20",
+    content: "",
+    date: new Date("2024-11-20"),
     readingTime: "6 phút",
-    tags: ["BIM", "Workflow"],
+    tags: JSON.stringify(["BIM", "Workflow"]),
+    published: true,
   },
   {
     slug: "vat-lieu-dia-phuong",
     title: "Sử dụng vật liệu địa phương trong kiến trúc đương đại",
     excerpt:
       "Gạch không nung, tre, đá ong — kết hợp hài hòa vật liệu truyền thống với thẩm mỹ hiện đại.",
-    date: "2024-10-08",
+    content: "",
+    date: new Date("2024-10-08"),
     readingTime: "10 phút",
-    tags: ["Vật liệu", "Truyền thống"],
+    tags: JSON.stringify(["Vật liệu", "Truyền thống"]),
+    published: true,
   },
 ];
+
+async function main() {
+  console.log("Seeding database...");
+
+  // Clear existing data
+  await prisma.blogPost.deleteMany();
+  await prisma.project.deleteMany();
+
+  // Seed projects
+  for (const project of projects) {
+    await prisma.project.create({ data: project });
+  }
+  console.log(`Seeded ${projects.length} projects`);
+
+  // Seed blog posts
+  for (const post of blogPosts) {
+    await prisma.blogPost.create({ data: post });
+  }
+  console.log(`Seeded ${blogPosts.length} blog posts`);
+
+  console.log("Seeding complete!");
+}
+
+main()
+  .catch((e) => {
+    console.error(e);
+    process.exit(1);
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
+  });

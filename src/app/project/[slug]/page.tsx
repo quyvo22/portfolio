@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { projects } from "@/data/mock";
+import { getProjectBySlug, getPublishedProjects } from "@/lib/data";
 import { ArrowLeft, FileText, Box } from "lucide-react";
 import { notFound } from "next/navigation";
 
@@ -8,18 +8,21 @@ interface Props {
   params: { slug: string };
 }
 
+export const dynamic = "force-dynamic";
+
 export async function generateStaticParams() {
+  const projects = await getPublishedProjects();
   return projects.map((p) => ({ slug: p.slug }));
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const project = projects.find((p) => p.slug === params.slug);
+  const project = await getProjectBySlug(params.slug);
   if (!project) return { title: "Không tìm thấy dự án" };
   return { title: project.title, description: project.description };
 }
 
-export default function ProjectPage({ params }: Props) {
-  const project = projects.find((p) => p.slug === params.slug);
+export default async function ProjectPage({ params }: Props) {
+  const project = await getProjectBySlug(params.slug);
   if (!project) notFound();
 
   const showPdf = project.category === "pdf" || project.category === "both";

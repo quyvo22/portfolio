@@ -1,10 +1,13 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
-import { projects } from "@/data/mock";
+import { getPublishedProjects } from "@/lib/data";
 import { ProjectCard } from "@/components/ui/project-card";
 import { HeroSection } from "@/components/sections/hero-section";
 
-export default function HomePage() {
+export const dynamic = "force-dynamic";
+
+export default async function HomePage() {
+  const projects = await getPublishedProjects();
   const featured = projects.slice(0, 4);
 
   return (

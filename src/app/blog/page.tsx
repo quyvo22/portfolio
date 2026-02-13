@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { blogPosts } from "@/data/mock";
+import { getPublishedPosts } from "@/lib/data";
 import { ArrowRight, Calendar, Clock } from "lucide-react";
 
 export const metadata: Metadata = {
@@ -9,7 +9,10 @@ export const metadata: Metadata = {
     "Chia sẻ kiến thức, kinh nghiệm và góc nhìn về thiết kế & kiến trúc.",
 };
 
-export default function BlogPage() {
+export const dynamic = "force-dynamic";
+
+export default async function BlogPage() {
+  const blogPosts = await getPublishedPosts();
   return (
     <section className="grid-container py-16">
       <div className="mb-10">

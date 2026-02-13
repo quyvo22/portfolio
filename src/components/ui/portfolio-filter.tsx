@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { Project } from "@/data/mock";
+import type { Project } from "@/types";
 import { ProjectCard } from "@/components/ui/project-card";
 import { StaggerContainer, StaggerItem } from "@/components/ui/motion";
 import { cn } from "@/lib/utils";

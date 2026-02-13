@@ -1,23 +1,35 @@
 // ============================================================
-// Shared type definitions
-// Extracted from mock data — will be aligned with Prisma schema
+// Shared type definitions — aligned with Prisma schema
 // ============================================================
 
 export interface Project {
+  id: string;
   slug: string;
   title: string;
   description: string;
-  category: "pdf" | "3d" | "both";
-  thumbnail: string;
+  category: string;
+  thumbnail: string | null;
   year: number;
   tags: string[];
+  pdfUrl: string | null;
+  modelUrl: string | null;
+  published: boolean;
+  authorId: string | null;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 export interface BlogPost {
+  id: string;
   slug: string;
   title: string;
   excerpt: string;
+  content: string;
   date: string;
   readingTime: string;
   tags: string[];
+  published: boolean;
+  authorId: string | null;
+  createdAt: Date;
+  updatedAt: Date;
 }

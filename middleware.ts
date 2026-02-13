@@ -1,6 +1,7 @@
 export { default } from "next-auth/middleware";
 
 export const config = {
-  // Protect all /admin routes except the login page itself
-  matcher: ["/admin/:path+"],
+  // Protect admin sub-routes (projects, posts, etc.)
+  // The /admin page itself handles auth in its layout (shows login form)
+  matcher: ["/admin/projects/:path*", "/admin/posts/:path*"],
 };
