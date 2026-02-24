@@ -17,7 +17,7 @@ export function Footer() {
               Portfolio<span className="text-accent-500">.</span>
             </Link>
             <p className="mt-3 text-sm text-ink-muted leading-relaxed">
-              Portfolio kiến trúc với trình xem PDF & 3D tương tác.
+              Kiến trúc. Kỹ thuật. Đổi mới.
             </p>
           </div>
 
@@ -30,7 +30,7 @@ export function Footer() {
               {[
                 { href: "/portfolio", label: "Dự án" },
                 { href: "/blog", label: "Bài viết" },
-                { href: "/about", label: "Giới thiệu" },
+                { href: "/about", label: "Về chúng tôi" },
               ].map((link) => (
                 <li key={link.href}>
                   <Link
@@ -57,7 +57,7 @@ export function Footer() {
         </div>
 
         <div className="mt-10 pt-6 border-t border-border flex flex-col sm:flex-row justify-between items-center gap-2 text-xs text-ink-faint">
-          <span>© 2025 Portfolio Studio. Mọi quyền được bảo lưu.</span>
+          <span>© 2026 Portfolio Studio. Mọi quyền được bảo lưu.</span>
           <span>Xây dựng với Next.js & TypeScript</span>
         </div>
       </div>

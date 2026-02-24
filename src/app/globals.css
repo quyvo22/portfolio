@@ -3,29 +3,33 @@
 @tailwind utilities;
 
 /* ================================
-   BASE THEME (NAVY + LIME)
+   BASE THEME — AUTODESK STYLE
+   Light: Pure White | Dark: Deep Graphite
+   Accent: Autodesk Yellow #FFD200
    ================================ */
 @layer base {
   :root {
-    --surface: 219 69% 14%;
-    --surface-raised: 219 45% 18%;
-    --surface-overlay: 219 40% 22%;
-    --ink: 225 30% 92%;
-    --ink-muted: 225 20% 70%;
-    --ink-faint: 225 15% 55%;
-    --border: 219 30% 28%;
-    --ring: 95 100% 65%;
+    /* Light Mode — Pure White */
+    --surface:         0 0% 100%;
+    --surface-raised:  0 0% 97%;
+    --surface-overlay: 0 0% 93%;
+    --ink:             0 0% 7%;
+    --ink-muted:       0 0% 35%;
+    --ink-faint:       0 0% 55%;
+    --border:          0 0% 88%;
+    --ring:            49 100% 50%;   /* Autodesk Yellow #FFD200 */
   }
 
   .dark {
-    --surface: 219 69% 12%;
-    --surface-raised: 219 45% 16%;
-    --surface-overlay: 219 40% 20%;
-    --ink: 225 30% 92%;
-    --ink-muted: 225 20% 70%;
-    --ink-faint: 225 15% 55%;
-    --border: 219 30% 28%;
-    --ring: 95 100% 65%;
+    /* Dark Mode — Deep Graphite */
+    --surface:         0 0% 7%;
+    --surface-raised:  0 0% 11%;
+    --surface-overlay: 0 0% 16%;
+    --ink:             0 0% 100%;
+    --ink-muted:       0 0% 72%;
+    --ink-faint:       0 0% 45%;
+    --border:          0 0% 22%;
+    --ring:            49 100% 50%;   /* Autodesk Yellow #FFD200 */
   }
 
   html {
@@ -54,7 +58,7 @@
 
   .skip-link {
     @apply absolute -top-full left-4 z-[9999]
-           bg-[hsl(var(--ring))] text-white px-4 py-2 rounded-b-lg
+           bg-[hsl(var(--ring))] text-black px-4 py-2 rounded-b-lg
            font-sans text-sm font-medium transition-all duration-200;
     @apply focus:top-0;
   }
