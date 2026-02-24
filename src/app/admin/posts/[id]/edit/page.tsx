@@ -29,6 +29,10 @@ export default async function EditPostPage({ params }: Props) {
           date: post.date.toISOString().split("T")[0],
           readingTime: post.readingTime,
           tags: JSON.parse(post.tags),
+          imageUrl: post.imageUrl || "",
+          imageAlt: post.imageAlt || "",
+          imageWidth: post.imageWidth || 0,
+          imageHeight: post.imageHeight || 0,
           published: post.published,
         }}
       />

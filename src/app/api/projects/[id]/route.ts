@@ -28,7 +28,7 @@ export async function PUT(request: Request, { params }: RouteParams) {
   }
 
   const body = await request.json();
-  const { slug, title, description, category, thumbnail, year, tags, pdfUrl, modelUrl, published } = body;
+  const { slug, title, description, category, thumbnail, imageAlt, imageWidth, imageHeight, year, tags, pdfUrl, modelUrl, published } = body;
 
   const project = await prisma.project.update({
     where: { id: params.id },
@@ -38,6 +38,9 @@ export async function PUT(request: Request, { params }: RouteParams) {
       ...(description !== undefined && { description }),
       ...(category !== undefined && { category }),
       ...(thumbnail !== undefined && { thumbnail }),
+      ...(imageAlt !== undefined && { imageAlt }),
+      ...(imageWidth !== undefined && { imageWidth }),
+      ...(imageHeight !== undefined && { imageHeight }),
       ...(year !== undefined && { year }),
       ...(tags !== undefined && { tags: JSON.stringify(tags) }),
       ...(pdfUrl !== undefined && { pdfUrl }),

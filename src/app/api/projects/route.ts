@@ -26,7 +26,7 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json();
-  const { slug, title, description, category, thumbnail, year, tags, pdfUrl, modelUrl, published } = body;
+  const { slug, title, description, category, thumbnail, imageAlt, imageWidth, imageHeight, year, tags, pdfUrl, modelUrl, published } = body;
 
   if (!slug || !title || !description) {
     return NextResponse.json({ error: "Missing required fields: slug, title, description" }, { status: 400 });
@@ -39,6 +39,9 @@ export async function POST(request: Request) {
       description,
       category: category || "both",
       thumbnail: thumbnail || null,
+      imageAlt: imageAlt || null,
+      imageWidth: imageWidth || null,
+      imageHeight: imageHeight || null,
       year: year || new Date().getFullYear(),
       tags: JSON.stringify(tags || []),
       pdfUrl: pdfUrl || null,
