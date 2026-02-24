@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { getProjectBySlug, getPublishedProjects } from "@/lib/data";
+import { getProjectBySlug } from "@/lib/data";
 import { ArrowLeft, FileText, Box } from "lucide-react";
 import { notFound } from "next/navigation";
 
@@ -9,11 +9,6 @@ interface Props {
 }
 
 export const dynamic = "force-dynamic";
-
-export async function generateStaticParams() {
-  const projects = await getPublishedProjects();
-  return projects.map((p) => ({ slug: p.slug }));
-}
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const project = await getProjectBySlug(params.slug);
