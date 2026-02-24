@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { ImageUpload } from "./image-upload";
 
 interface PostFormData {
   id?: string;
@@ -12,6 +13,10 @@ interface PostFormData {
   date: string;
   readingTime: string;
   tags: string[];
+  imageUrl: string;
+  imageAlt: string;
+  imageWidth: number;
+  imageHeight: number;
   published: boolean;
 }
 
@@ -33,6 +38,10 @@ export function PostForm({ initialData, mode }: Props) {
     date: initialData?.date || new Date().toISOString().split("T")[0],
     readingTime: initialData?.readingTime || "5 phút",
     tags: initialData?.tags || [],
+    imageUrl: initialData?.imageUrl || "",
+    imageAlt: initialData?.imageAlt || "",
+    imageWidth: initialData?.imageWidth || 0,
+    imageHeight: initialData?.imageHeight || 0,
     published: initialData?.published || false,
   });
 
@@ -170,6 +179,27 @@ export function PostForm({ initialData, mode }: Props) {
           value={tagsInput}
           onChange={(e) => setTagsInput(e.target.value)}
           placeholder="BIM, Workflow"
+          className="w-full px-3 py-2 rounded-lg bg-surface-overlay border border-border text-ink text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+        />
+      </div>
+
+      <ImageUpload
+        label="Ảnh bìa bài viết"
+        value={form.imageUrl}
+        onChange={({ url, width, height }) =>
+          setForm({ ...form, imageUrl: url, imageWidth: width, imageHeight: height })
+        }
+      />
+
+      <div>
+        <label className="block text-sm font-medium text-ink-muted mb-1">
+          Alt text (mô tả hình ảnh)
+        </label>
+        <input
+          type="text"
+          value={form.imageAlt}
+          onChange={(e) => setForm({ ...form, imageAlt: e.target.value })}
+          placeholder="Ví dụ: Sơ đồ quy trình BIM"
           className="w-full px-3 py-2 rounded-lg bg-surface-overlay border border-border text-ink text-sm focus:outline-none focus:ring-2 focus:ring-accent"
         />
       </div>

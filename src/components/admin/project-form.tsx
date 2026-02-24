@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { ImageUpload } from "./image-upload";
 
 interface ProjectFormData {
   id?: string;
@@ -10,6 +11,9 @@ interface ProjectFormData {
   description: string;
   category: string;
   thumbnail: string;
+  imageAlt: string;
+  imageWidth: number;
+  imageHeight: number;
   year: number;
   tags: string[];
   pdfUrl: string;
@@ -33,6 +37,9 @@ export function ProjectForm({ initialData, mode }: Props) {
     description: initialData?.description || "",
     category: initialData?.category || "both",
     thumbnail: initialData?.thumbnail || "",
+    imageAlt: initialData?.imageAlt || "",
+    imageWidth: initialData?.imageWidth || 0,
+    imageHeight: initialData?.imageHeight || 0,
     year: initialData?.year || new Date().getFullYear(),
     tags: initialData?.tags || [],
     pdfUrl: initialData?.pdfUrl || "",
@@ -129,7 +136,7 @@ export function ProjectForm({ initialData, mode }: Props) {
         />
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label className="block text-sm font-medium text-ink-muted mb-1">
             Danh mục
@@ -155,17 +162,27 @@ export function ProjectForm({ initialData, mode }: Props) {
             className="w-full px-3 py-2 rounded-lg bg-surface-overlay border border-border text-ink text-sm focus:outline-none focus:ring-2 focus:ring-accent"
           />
         </div>
-        <div>
-          <label className="block text-sm font-medium text-ink-muted mb-1">
-            Thumbnail URL
-          </label>
-          <input
-            type="text"
-            value={form.thumbnail}
-            onChange={(e) => setForm({ ...form, thumbnail: e.target.value })}
-            className="w-full px-3 py-2 rounded-lg bg-surface-overlay border border-border text-ink text-sm focus:outline-none focus:ring-2 focus:ring-accent"
-          />
-        </div>
+      </div>
+
+      <ImageUpload
+        label="Thumbnail"
+        value={form.thumbnail}
+        onChange={({ url, width, height }) =>
+          setForm({ ...form, thumbnail: url, imageWidth: width, imageHeight: height })
+        }
+      />
+
+      <div>
+        <label className="block text-sm font-medium text-ink-muted mb-1">
+          Alt text (mô tả hình ảnh)
+        </label>
+        <input
+          type="text"
+          value={form.imageAlt}
+          onChange={(e) => setForm({ ...form, imageAlt: e.target.value })}
+          placeholder="Ví dụ: Phối cảnh mặt tiền dự án nhà phố"
+          className="w-full px-3 py-2 rounded-lg bg-surface-overlay border border-border text-ink text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+        />
       </div>
 
       <div>

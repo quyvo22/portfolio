@@ -32,7 +32,7 @@ export async function PUT(request: Request, { params }: RouteParams) {
   }
 
   const body = await request.json();
-  const { slug, title, excerpt, content, date, readingTime, tags, published } = body;
+  const { slug, title, excerpt, content, date, readingTime, tags, imageUrl, imageAlt, imageWidth, imageHeight, published } = body;
 
   const post = await prisma.blogPost.update({
     where: { id: params.id },
@@ -44,6 +44,10 @@ export async function PUT(request: Request, { params }: RouteParams) {
       ...(date !== undefined && { date: new Date(date) }),
       ...(readingTime !== undefined && { readingTime }),
       ...(tags !== undefined && { tags: JSON.stringify(tags) }),
+      ...(imageUrl !== undefined && { imageUrl }),
+      ...(imageAlt !== undefined && { imageAlt }),
+      ...(imageWidth !== undefined && { imageWidth }),
+      ...(imageHeight !== undefined && { imageHeight }),
       ...(published !== undefined && { published }),
     },
   });

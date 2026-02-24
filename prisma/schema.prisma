@@ -77,8 +77,11 @@ model Project {
   description String
   category    String   @default("both") // "pdf" | "3d" | "both"
   thumbnail   String?
+  imageAlt    String?
+  imageWidth  Int?
+  imageHeight Int?
   year        Int
-  tags        String   @default("[]") // JSON array stored as string (SQLite compat)
+  tags        String   @default("[]") // JSON array stored as string
   pdfUrl      String?
   modelUrl    String?
   published   Boolean  @default(false)
@@ -100,7 +103,11 @@ model BlogPost {
   content     String   @default("")
   date        DateTime @default(now())
   readingTime String   @default("5 phút")
-  tags        String   @default("[]") // JSON array stored as string (SQLite compat)
+  tags        String   @default("[]") // JSON array stored as string
+  imageUrl    String?
+  imageAlt    String?
+  imageWidth  Int?
+  imageHeight Int?
   published   Boolean  @default(false)
   authorId    String?
   author      User?    @relation(fields: [authorId], references: [id])

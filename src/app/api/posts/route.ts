@@ -27,7 +27,7 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json();
-  const { slug, title, excerpt, content, date, readingTime, tags, published } = body;
+  const { slug, title, excerpt, content, date, readingTime, tags, imageUrl, imageAlt, imageWidth, imageHeight, published } = body;
 
   if (!slug || !title || !excerpt) {
     return NextResponse.json({ error: "Missing required fields: slug, title, excerpt" }, { status: 400 });
@@ -42,6 +42,10 @@ export async function POST(request: Request) {
       date: date ? new Date(date) : new Date(),
       readingTime: readingTime || "5 phút",
       tags: JSON.stringify(tags || []),
+      imageUrl: imageUrl || null,
+      imageAlt: imageAlt || null,
+      imageWidth: imageWidth || null,
+      imageHeight: imageHeight || null,
       published: published ?? false,
       authorId: session.user.id,
     },

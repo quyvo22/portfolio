@@ -41,7 +41,16 @@ export const authOptions: NextAuthOptions = {
         .map((e) => e.trim().toLowerCase());
 
       if (!user.email) return false;
-      return adminEmails.includes(user.email.toLowerCase());
+      const isAdmin = adminEmails.includes(user.email.toLowerCase());
+      if (!isAdmin) return false;
+
+      // Ensure the DB record has role = "admin"
+      await prisma.user.updateMany({
+        where: { email: user.email, role: { not: "admin" } },
+        data: { role: "admin" },
+      });
+
+      return true;
     },
     async session({ session, token, user }) {
       if (session.user) {
@@ -59,6 +68,14 @@ export const authOptions: NextAuthOptions = {
     async jwt({ token, user }) {
       if (user) {
         token.role = user.role;
+      }
+      // For Google OAuth, role is not on the user object — fetch from DB
+      if (!token.role && token.sub) {
+        const dbUser = await prisma.user.findUnique({
+          where: { id: token.sub },
+          select: { role: true },
+        });
+        token.role = dbUser?.role ?? "viewer";
       }
       return token;
     },
