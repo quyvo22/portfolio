@@ -8,23 +8,87 @@ interface Props {
   params: { slug: string };
 }
 
+const SITE_URL =
+  process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3099";
+
 export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const project = await getProjectBySlug(params.slug);
   if (!project) return { title: "Không tìm thấy dự án" };
-  return { title: project.title, description: project.description };
+
+  const canonical = `${SITE_URL}/project/${project.slug}`;
+  const ogImage = project.thumbnail || `${SITE_URL}/og-placeholder.svg`;
+
+  return {
+    title: project.title,
+    description: project.description,
+    alternates: { canonical },
+    openGraph: {
+      type: "website",
+      title: project.title,
+      description: project.description,
+      url: canonical,
+      images: [
+        {
+          url: ogImage,
+          width: project.imageWidth || 1200,
+          height: project.imageHeight || 630,
+          alt: project.imageAlt || project.title,
+        },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: project.title,
+      description: project.description,
+      images: [ogImage],
+    },
+  };
 }
 
 export default async function ProjectPage({ params }: Props) {
   const project = await getProjectBySlug(params.slug);
   if (!project) notFound();
 
+  const canonical = `${SITE_URL}/project/${project.slug}`;
+  const ogImage = project.thumbnail || `${SITE_URL}/og-placeholder.svg`;
+
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "CreativeWork",
+    name: project.title,
+    description: project.description,
+    url: canonical,
+    dateCreated: String(project.year),
+    dateModified: project.updatedAt
+      ? new Date(project.updatedAt).toISOString()
+      : undefined,
+    creator: {
+      "@type": "Organization",
+      name: "Portfolio Studio",
+      url: SITE_URL,
+    },
+    image: {
+      "@type": "ImageObject",
+      url: ogImage,
+      width: project.imageWidth || 1200,
+      height: project.imageHeight || 630,
+    },
+    keywords: project.tags.join(", "),
+    genre: project.category,
+  };
+
   const showPdf = project.category === "pdf" || project.category === "both";
   const show3d = project.category === "3d" || project.category === "both";
 
   return (
     <section className="grid-container py-12">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+
       <Link
         href="/portfolio"
         className="inline-flex items-center gap-1.5 text-sm text-ink-muted hover:text-ink transition-colors mb-8"

@@ -19,6 +19,9 @@ const fontSans = Source_Sans_3({
   display: "swap",
 });
 
+const SITE_URL =
+  process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3099";
+
 export const metadata: Metadata = {
   title: {
     default: "Portfolio Studio — Thiết kế & Kiến trúc",
@@ -26,14 +29,31 @@ export const metadata: Metadata = {
   },
   description:
     "Portfolio kiến trúc với trình xem PDF & 3D tương tác. Trưng bày dự án, bản vẽ kỹ thuật và mô hình ba chiều.",
-  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"),
+  metadataBase: new URL(SITE_URL),
+  alternates: {
+    canonical: SITE_URL,
+  },
   openGraph: {
     type: "website",
     locale: "vi_VN",
     siteName: "Portfolio Studio",
     title: "Portfolio Studio — Thiết kế & Kiến trúc",
     description: "Portfolio kiến trúc với trình xem PDF & 3D tương tác.",
-    images: [{ url: "/og-placeholder.svg", width: 1200, height: 630 }],
+    url: SITE_URL,
+    images: [
+      {
+        url: "/og-placeholder.svg",
+        width: 1200,
+        height: 630,
+        alt: "Portfolio Studio — Thiết kế & Kiến trúc",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Portfolio Studio — Thiết kế & Kiến trúc",
+    description: "Portfolio kiến trúc với trình xem PDF & 3D tương tác.",
+    images: ["/og-placeholder.svg"],
   },
   robots: { index: true, follow: true },
 };
