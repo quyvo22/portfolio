@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ImageUpload } from "./image-upload";
 import { PdfUpload } from "./pdf-upload";
+import { ModelUpload } from "./model-upload";
 
 interface ProjectFormData {
   id?: string;
@@ -204,17 +205,10 @@ export function ProjectForm({ initialData, mode }: Props) {
         onChange={(url) => setForm({ ...form, pdfUrl: url })}
       />
 
-      <div>
-        <label className="block text-sm font-medium text-ink-muted mb-1">
-          3D Model URL
-        </label>
-        <input
-          type="text"
-          value={form.modelUrl}
-          onChange={(e) => setForm({ ...form, modelUrl: e.target.value })}
-          className="w-full px-3 py-2 rounded-lg bg-surface-overlay border border-border text-ink text-sm focus:outline-none focus:ring-2 focus:ring-accent"
-        />
-      </div>
+      <ModelUpload
+        value={form.modelUrl}
+        onChange={(url) => setForm({ ...form, modelUrl: url })}
+      />
 
       <div className="flex items-center gap-2">
         <input
