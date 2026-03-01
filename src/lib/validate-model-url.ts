@@ -4,7 +4,7 @@ export function validateModelUrl(url: string | null | undefined): {
   valid: boolean;
   error?: string;
 } {
-  if (!url) return { valid: false, error: "No URL provided" };
+  if (!url || !url.trim()) return { valid: false, error: "No URL provided" };
 
   try {
     const parsed = new URL(url);
@@ -13,8 +13,17 @@ export function validateModelUrl(url: string | null | undefined): {
       return { valid: false, error: "URL must use HTTPS" };
     }
 
-    const ext = parsed.pathname.toLowerCase().split(".").pop();
-    if (!ext || !VALID_EXTENSIONS.includes(`.${ext}`)) {
+    const pathname = parsed.pathname.toLowerCase();
+
+    // Check if pathname ends with a valid extension
+    const hasValidExt = VALID_EXTENSIONS.some((ext) => pathname.endsWith(ext));
+
+    // Also accept Cloudinary raw URLs that contain glb/gltf in the path
+    const isCloudinaryRaw =
+      parsed.hostname.includes("cloudinary.com") &&
+      pathname.includes("/raw/upload/");
+
+    if (!hasValidExt && !isCloudinaryRaw) {
       return { valid: false, error: "File must be .glb or .gltf" };
     }
 
