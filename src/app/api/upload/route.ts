@@ -23,24 +23,29 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "No file provided" }, { status: 400 });
   }
 
-  const allowedTypes = ["image/jpeg", "image/png", "image/webp", "image/gif"];
-  if (!allowedTypes.includes(file.type)) {
+  const imageTypes = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+  const isPdf = file.type === "application/pdf";
+  const isImage = imageTypes.includes(file.type);
+
+  if (!isImage && !isPdf) {
     return NextResponse.json(
-      { error: "Invalid file type. Only JPEG, PNG, WebP, and GIF are allowed." },
+      { error: "Invalid file type. Only JPEG, PNG, WebP, GIF, and PDF are allowed." },
       { status: 400 }
     );
   }
 
-  const maxSize = 10 * 1024 * 1024; // 10 MB
+  const maxSize = isPdf ? 50 * 1024 * 1024 : 10 * 1024 * 1024;
   if (file.size > maxSize) {
     return NextResponse.json(
-      { error: "File too large. Maximum size is 10 MB." },
+      { error: `File too large. Maximum size is ${isPdf ? "50" : "10"} MB.` },
       { status: 400 }
     );
   }
 
   const bytes = await file.arrayBuffer();
   const buffer = Buffer.from(bytes);
+
+  const resourceType = isPdf ? "raw" as const : "image" as const;
 
   const result = await new Promise<{
     secure_url: string;
@@ -52,14 +57,14 @@ export async function POST(request: Request) {
       .upload_stream(
         {
           folder: "portfolio",
-          resource_type: "image",
+          resource_type: resourceType,
         },
         (error, result) => {
           if (error || !result) return reject(error ?? new Error("Upload failed"));
           resolve({
             secure_url: result.secure_url,
-            width: result.width,
-            height: result.height,
+            width: result.width ?? 0,
+            height: result.height ?? 0,
             public_id: result.public_id,
           });
         }
@@ -69,8 +74,7 @@ export async function POST(request: Request) {
 
   return NextResponse.json({
     url: result.secure_url,
-    width: result.width,
-    height: result.height,
     publicId: result.public_id,
+    ...(isImage ? { width: result.width, height: result.height } : {}),
   });
 }

@@ -1,8 +1,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import dynamicImport from "next/dynamic";
 import { getProjectBySlug } from "@/lib/data";
 import { ArrowLeft, FileText, Box } from "lucide-react";
 import { notFound } from "next/navigation";
+
+const PdfViewer = dynamicImport(
+  () => import("@/components/ui/pdf-viewer").then((m) => m.PdfViewer),
+  { ssr: false }
+);
 
 interface Props {
   params: { slug: string };
@@ -61,13 +67,16 @@ export default async function ProjectPage({ params }: Props) {
                 : "col-span-4 sm:col-span-8 lg:col-span-12"
             }
           >
-            <div className="card">
-              <div className="aspect-[3/4] bg-surface-overlay flex flex-col items-center justify-center gap-3 text-ink-faint">
-                <FileText size={48} strokeWidth={1} />
-                <p className="text-sm font-medium">Trình xem PDF</p>
-                <p className="text-xs">(Phase 5: PDF.js viewer)</p>
+            {project.pdfUrl ? (
+              <PdfViewer url={project.pdfUrl} />
+            ) : (
+              <div className="card">
+                <div className="aspect-[3/4] bg-surface-overlay flex flex-col items-center justify-center gap-3 text-ink-faint">
+                  <FileText size={48} strokeWidth={1} />
+                  <p className="text-sm font-medium">Chưa có file PDF</p>
+                </div>
               </div>
-            </div>
+            )}
           </div>
         )}
         {show3d && (

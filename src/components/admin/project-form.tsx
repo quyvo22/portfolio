@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ImageUpload } from "./image-upload";
+import { PdfUpload } from "./pdf-upload";
 
 interface ProjectFormData {
   id?: string;
@@ -198,29 +199,21 @@ export function ProjectForm({ initialData, mode }: Props) {
         />
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div>
-          <label className="block text-sm font-medium text-ink-muted mb-1">
-            PDF URL
-          </label>
-          <input
-            type="text"
-            value={form.pdfUrl}
-            onChange={(e) => setForm({ ...form, pdfUrl: e.target.value })}
-            className="w-full px-3 py-2 rounded-lg bg-surface-overlay border border-border text-ink text-sm focus:outline-none focus:ring-2 focus:ring-accent"
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-ink-muted mb-1">
-            3D Model URL
-          </label>
-          <input
-            type="text"
-            value={form.modelUrl}
-            onChange={(e) => setForm({ ...form, modelUrl: e.target.value })}
-            className="w-full px-3 py-2 rounded-lg bg-surface-overlay border border-border text-ink text-sm focus:outline-none focus:ring-2 focus:ring-accent"
-          />
-        </div>
+      <PdfUpload
+        value={form.pdfUrl}
+        onChange={(url) => setForm({ ...form, pdfUrl: url })}
+      />
+
+      <div>
+        <label className="block text-sm font-medium text-ink-muted mb-1">
+          3D Model URL
+        </label>
+        <input
+          type="text"
+          value={form.modelUrl}
+          onChange={(e) => setForm({ ...form, modelUrl: e.target.value })}
+          className="w-full px-3 py-2 rounded-lg bg-surface-overlay border border-border text-ink text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+        />
       </div>
 
       <div className="flex items-center gap-2">
