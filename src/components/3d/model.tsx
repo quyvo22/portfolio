@@ -30,7 +30,7 @@ export function Model({ url }: ModelProps) {
   }, [scene]);
 
   return (
-    <Bounds fit clip observe damping={6} margin={1.2}>
+    <Bounds fit clip observe margin={1.2}>
       <group ref={groupRef}>
         <primitive object={scene} />
       </group>
