@@ -37,6 +37,8 @@ class ThreeErrorBoundary extends Component<
     const msg = error.message || "Unknown error";
     if (msg.includes("Failed to fetch") || msg.includes("CORS")) {
       this.props.onError("Lỗi CORS — storage chưa cho phép truy cập từ domain này");
+    } else if (msg.includes("Failed to load buffer") || msg.includes(".bin")) {
+      this.props.onError("File .gltf thiếu buffer (.bin). Vui lòng upload lại dạng .glb (binary)");
     } else {
       this.props.onError(msg);
     }

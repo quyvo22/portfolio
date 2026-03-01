@@ -26,14 +26,20 @@ export async function POST(request: Request) {
   const imageTypes = ["image/jpeg", "image/png", "image/webp", "image/gif"];
   const isPdf = file.type === "application/pdf";
   const isImage = imageTypes.includes(file.type);
-  const modelTypes = ["model/gltf-binary", "model/gltf+json", "application/octet-stream"];
-  const isModel = modelTypes.includes(file.type) ||
-    file.name.endsWith(".glb") ||
-    file.name.endsWith(".gltf");
+  const isModel = file.name.toLowerCase().endsWith(".glb") ||
+    file.type === "model/gltf-binary";
+
+  // Reject .gltf JSON files — they need external .bin/textures which won't work
+  if (file.name.toLowerCase().endsWith(".gltf")) {
+    return NextResponse.json(
+      { error: "Chỉ hỗ trợ file .glb (binary). Vui lòng export lại model dạng .glb thay vì .gltf + .bin" },
+      { status: 400 }
+    );
+  }
 
   if (!isImage && !isPdf && !isModel) {
     return NextResponse.json(
-      { error: "Invalid file type. Allowed: JPEG, PNG, WebP, GIF, PDF, GLB, glTF." },
+      { error: "Invalid file type. Allowed: JPEG, PNG, WebP, GIF, PDF, GLB." },
       { status: 400 }
     );
   }
@@ -58,13 +64,15 @@ export async function POST(request: Request) {
     height: number;
     public_id: string;
   }>((resolve, reject) => {
-    const originalName = file.name.replace(/\.[^.]+$/, "");
     cloudinary.uploader
       .upload_stream(
         {
           folder: "portfolio",
           resource_type: resourceType,
-          ...(isModel && { public_id: `${originalName}-${Date.now()}` }),
+          ...(isModel && {
+            use_filename: true,
+            unique_filename: true,
+          }),
         },
         (error, result) => {
           if (error || !result) return reject(error ?? new Error("Upload failed"));
