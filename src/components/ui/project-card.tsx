@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import type { Project } from "@/types";
 import { cn } from "@/lib/utils";
 import { FileText, Box } from "lucide-react";
@@ -11,11 +12,20 @@ export function ProjectCard({ project }: { project: Project }) {
 
   return (
     <Link href={`/project/${project.slug}`} className="group card block">
-      {/* Thumbnail placeholder */}
       <div className="relative aspect-[4/3] bg-surface-overlay flex items-center justify-center overflow-hidden">
-        <div className="text-ink-faint">
-          <Icon size={40} strokeWidth={1} />
-        </div>
+        {project.thumbnail ? (
+          <Image
+            src={project.thumbnail}
+            alt={project.imageAlt || project.title}
+            fill
+            className="object-cover transition-transform duration-300 group-hover:scale-105"
+            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+          />
+        ) : (
+          <div className="text-ink-faint">
+            <Icon size={40} strokeWidth={1} />
+          </div>
+        )}
         <span
           className={cn(
             "absolute top-3 right-3 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider",
