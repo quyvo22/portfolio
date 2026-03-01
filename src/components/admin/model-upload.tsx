@@ -8,6 +8,9 @@ interface ModelUploadProps {
   onChange: (url: string) => void;
 }
 
+const CLOUD_NAME = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
+const UPLOAD_PRESET = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
+
 export function ModelUpload({ value, onChange }: ModelUploadProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
@@ -27,37 +30,25 @@ export function ModelUpload({ value, onChange }: ModelUploadProps) {
       return;
     }
 
+    if (!CLOUD_NAME || !UPLOAD_PRESET) {
+      setError("Thiếu cấu hình Cloudinary. Kiểm tra NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME và NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET.");
+      return;
+    }
+
     setUploading(true);
     setProgress(0);
     setError("");
 
     try {
-      // Step 1: Get signed upload params from our API
-      const sigRes = await fetch("/api/upload-signature", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ folder: "portfolio", resourceType: "raw" }),
-      });
-
-      if (!sigRes.ok) {
-        const data = await sigRes.json();
-        throw new Error(data.error || "Không lấy được chữ ký upload");
-      }
-
-      const { signature, timestamp, cloudName, apiKey, folder } = await sigRes.json();
-
-      // Step 2: Upload directly to Cloudinary from browser (no server body limit)
-      // Only include params that were signed — extras cause signature mismatch (400)
+      // Direct unsigned upload to Cloudinary — no server, no signature, no body limit
       const formData = new FormData();
       formData.append("file", file);
-      formData.append("signature", signature);
-      formData.append("timestamp", String(timestamp));
-      formData.append("api_key", apiKey);
-      formData.append("folder", folder);
+      formData.append("upload_preset", UPLOAD_PRESET);
+      formData.append("folder", "portfolio");
 
       const xhr = new XMLHttpRequest();
 
-      const uploadPromise = new Promise<string>((resolve, reject) => {
+      const secureUrl = await new Promise<string>((resolve, reject) => {
         xhr.upload.addEventListener("progress", (e) => {
           if (e.lengthComputable) {
             setProgress(Math.round((e.loaded / e.total) * 100));
@@ -69,18 +60,22 @@ export function ModelUpload({ value, onChange }: ModelUploadProps) {
             const data = JSON.parse(xhr.responseText);
             resolve(data.secure_url);
           } else {
-            reject(new Error(`Upload thất bại (${xhr.status})`));
+            let msg = `Upload thất bại (${xhr.status})`;
+            try {
+              const errData = JSON.parse(xhr.responseText);
+              if (errData.error?.message) msg = errData.error.message;
+            } catch { /* ignore */ }
+            reject(new Error(msg));
           }
         });
 
         xhr.addEventListener("error", () => reject(new Error("Lỗi mạng khi upload")));
         xhr.addEventListener("abort", () => reject(new Error("Upload bị hủy")));
 
-        xhr.open("POST", `https://api.cloudinary.com/v1_1/${cloudName}/raw/upload`);
+        xhr.open("POST", `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/raw/upload`);
         xhr.send(formData);
       });
 
-      const secureUrl = await uploadPromise;
       onChange(secureUrl);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Upload thất bại");
