@@ -9,6 +9,9 @@ export interface Project {
   description: string;
   category: string;
   thumbnail: string | null;
+  imageAlt: string | null;
+  imageWidth: number | null;
+  imageHeight: number | null;
   year: number;
   tags: string[];
   pdfUrl: string | null;
