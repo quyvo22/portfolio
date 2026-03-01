@@ -112,7 +112,7 @@ export function ModelUpload({ value, onChange }: ModelUploadProps) {
               <>
                 <Box size={32} className="text-ink-muted" />
                 <span className="text-sm text-ink-muted">Kéo thả hoặc click để chọn model</span>
-                <span className="text-xs text-ink-muted/60">GLB, glTF · tối đa 100 MB</span>
+                <span className="text-xs text-ink-muted/60">Chỉ file .glb (binary) · tối đa 100 MB</span>
               </>
             )}
           </div>
@@ -140,7 +140,7 @@ export function ModelUpload({ value, onChange }: ModelUploadProps) {
       <input
         ref={inputRef}
         type="file"
-        accept=".glb,.gltf"
+        accept=".glb"
         className="hidden"
         onChange={handleFileChange}
         disabled={uploading}
