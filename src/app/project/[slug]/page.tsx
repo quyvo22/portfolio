@@ -17,13 +17,15 @@ interface Props {
 export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const project = await getProjectBySlug(params.slug);
+  const slug = decodeURIComponent(params.slug);
+  const project = await getProjectBySlug(slug);
   if (!project) return { title: "Không tìm thấy dự án" };
   return { title: project.title, description: project.description };
 }
 
 export default async function ProjectPage({ params }: Props) {
-  const project = await getProjectBySlug(params.slug);
+  const slug = decodeURIComponent(params.slug);
+  const project = await getProjectBySlug(slug);
   if (!project) notFound();
 
   const showPdf = project.category === "pdf" || project.category === "both";

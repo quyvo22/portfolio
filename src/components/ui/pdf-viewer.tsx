@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { Document, Page, pdfjs } from "react-pdf";
 import "react-pdf/dist/Page/AnnotationLayer.css";
 import "react-pdf/dist/Page/TextLayer.css";
@@ -17,7 +17,7 @@ import {
 
 pdfjs.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
 
-const ZOOM_LEVELS = [0.75, 1, 1.5] as const;
+const ZOOM_LEVELS = [0.75, 1, 1.5, 2] as const;
 
 interface PdfViewerProps {
   url: string;
@@ -29,9 +29,37 @@ export function PdfViewer({ url }: PdfViewerProps) {
   const [zoomIndex, setZoomIndex] = useState(1); // default 100%
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [loadError, setLoadError] = useState(false);
+  const [containerWidth, setContainerWidth] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
 
   const zoom = ZOOM_LEVELS[zoomIndex];
+
+  // Measure container width for responsive fit
+  useEffect(() => {
+    function updateWidth() {
+      if (contentRef.current) {
+        // subtract padding (16px * 2)
+        setContainerWidth(contentRef.current.clientWidth - 32);
+      }
+    }
+
+    updateWidth();
+
+    const observer = new ResizeObserver(updateWidth);
+    if (contentRef.current) observer.observe(contentRef.current);
+
+    return () => observer.disconnect();
+  }, []);
+
+  // Listen for fullscreen changes (e.g. pressing Esc)
+  useEffect(() => {
+    function onFullscreenChange() {
+      setIsFullscreen(!!document.fullscreenElement);
+    }
+    document.addEventListener("fullscreenchange", onFullscreenChange);
+    return () => document.removeEventListener("fullscreenchange", onFullscreenChange);
+  }, []);
 
   function onDocumentLoadSuccess({ numPages }: { numPages: number }) {
     setNumPages(numPages);
@@ -64,10 +92,8 @@ export function PdfViewer({ url }: PdfViewerProps) {
 
     if (!document.fullscreenElement) {
       await containerRef.current.requestFullscreen();
-      setIsFullscreen(true);
     } else {
       await document.exitFullscreen();
-      setIsFullscreen(false);
     }
   }
 
@@ -82,6 +108,9 @@ export function PdfViewer({ url }: PdfViewerProps) {
       </div>
     );
   }
+
+  // At zoom=1 (100%), PDF fits container width. Zoom multiplies from there.
+  const pageWidth = containerWidth > 0 ? containerWidth * zoom : undefined;
 
   return (
     <div ref={containerRef} className="card flex flex-col bg-surface-overlay">
@@ -141,7 +170,10 @@ export function PdfViewer({ url }: PdfViewerProps) {
       </div>
 
       {/* PDF Content */}
-      <div className="flex-1 overflow-auto flex justify-center p-4 bg-surface-overlay min-h-[60vh]">
+      <div
+        ref={contentRef}
+        className="flex-1 overflow-auto flex justify-center p-4 bg-surface-overlay min-h-[60vh]"
+      >
         <Document
           file={url}
           onLoadSuccess={onDocumentLoadSuccess}
@@ -155,7 +187,7 @@ export function PdfViewer({ url }: PdfViewerProps) {
         >
           <Page
             pageNumber={pageNumber}
-            scale={zoom}
+            width={pageWidth}
             loading={
               <div className="flex items-center justify-center py-20">
                 <Loader2 size={24} className="animate-spin text-ink-faint" />
