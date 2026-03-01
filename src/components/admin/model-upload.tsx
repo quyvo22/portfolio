@@ -47,15 +47,13 @@ export function ModelUpload({ value, onChange }: ModelUploadProps) {
       const { signature, timestamp, cloudName, apiKey, folder } = await sigRes.json();
 
       // Step 2: Upload directly to Cloudinary from browser (no server body limit)
+      // Only include params that were signed — extras cause signature mismatch (400)
       const formData = new FormData();
       formData.append("file", file);
       formData.append("signature", signature);
       formData.append("timestamp", String(timestamp));
       formData.append("api_key", apiKey);
       formData.append("folder", folder);
-      formData.append("use_filename", "true");
-      formData.append("unique_filename", "true");
-      formData.append("resource_type", "raw");
 
       const xhr = new XMLHttpRequest();
 
