@@ -26,18 +26,23 @@ export async function POST(request: Request) {
   const imageTypes = ["image/jpeg", "image/png", "image/webp", "image/gif"];
   const isPdf = file.type === "application/pdf";
   const isImage = imageTypes.includes(file.type);
+  const modelTypes = ["model/gltf-binary", "model/gltf+json", "application/octet-stream"];
+  const isModel = modelTypes.includes(file.type) ||
+    file.name.endsWith(".glb") ||
+    file.name.endsWith(".gltf");
 
-  if (!isImage && !isPdf) {
+  if (!isImage && !isPdf && !isModel) {
     return NextResponse.json(
-      { error: "Invalid file type. Only JPEG, PNG, WebP, GIF, and PDF are allowed." },
+      { error: "Invalid file type. Allowed: JPEG, PNG, WebP, GIF, PDF, GLB, glTF." },
       { status: 400 }
     );
   }
 
-  const maxSize = isPdf ? 50 * 1024 * 1024 : 10 * 1024 * 1024;
+  const maxSize = isModel ? 100 * 1024 * 1024 : isPdf ? 50 * 1024 * 1024 : 10 * 1024 * 1024;
   if (file.size > maxSize) {
+    const limitLabel = isModel ? "100" : isPdf ? "50" : "10";
     return NextResponse.json(
-      { error: `File too large. Maximum size is ${isPdf ? "50" : "10"} MB.` },
+      { error: `File too large. Maximum size is ${limitLabel} MB.` },
       { status: 400 }
     );
   }
@@ -45,7 +50,7 @@ export async function POST(request: Request) {
   const bytes = await file.arrayBuffer();
   const buffer = Buffer.from(bytes);
 
-  const resourceType = isPdf ? "raw" as const : "image" as const;
+  const resourceType = (isPdf || isModel) ? "raw" as const : "image" as const;
 
   const result = await new Promise<{
     secure_url: string;

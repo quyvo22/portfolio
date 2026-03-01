@@ -5,8 +5,15 @@ import { getProjectBySlug } from "@/lib/data";
 import { ArrowLeft, FileText, Box } from "lucide-react";
 import { notFound } from "next/navigation";
 
+import { validateModelUrl } from "@/lib/validate-model-url";
+
 const PdfViewer = dynamicImport(
   () => import("@/components/ui/pdf-viewer").then((m) => m.PdfViewer),
+  { ssr: false }
+);
+
+const ModelViewer = dynamicImport(
+  () => import("@/components/3d/model-viewer").then((m) => m.ModelViewer),
   { ssr: false }
 );
 
@@ -89,13 +96,19 @@ export default async function ProjectPage({ params }: Props) {
                 : "col-span-4 sm:col-span-8 lg:col-span-12"
             }
           >
-            <div className="card">
-              <div className="aspect-square bg-surface-overlay flex flex-col items-center justify-center gap-3 text-ink-faint">
-                <Box size={48} strokeWidth={1} />
-                <p className="text-sm font-medium">Trình xem 3D</p>
-                <p className="text-xs">(Phase 6: React Three Fiber)</p>
+            {validateModelUrl(project.modelUrl).valid ? (
+              <ModelViewer
+                url={project.modelUrl!}
+                poster={project.thumbnail}
+              />
+            ) : (
+              <div className="card">
+                <div className="aspect-square bg-surface-overlay flex flex-col items-center justify-center gap-3 text-ink-faint">
+                  <Box size={48} strokeWidth={1} />
+                  <p className="text-sm font-medium">Chưa có model 3D</p>
+                </div>
               </div>
-            </div>
+            )}
           </div>
         )}
       </div>
