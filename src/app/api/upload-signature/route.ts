@@ -9,33 +9,31 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-// POST /api/upload-signature — generate a signed upload params for direct browser→Cloudinary upload
+// POST /api/upload-signature — signed params for direct browser→Cloudinary upload
 export async function POST(request: Request) {
   const session = await getServerSession(authOptions);
   if (!session || session.user.role !== "admin") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { folder, resourceType } = await request.json();
+  await request.json(); // consume body
 
   const timestamp = Math.round(Date.now() / 1000);
-  const params = {
-    timestamp,
-    folder: folder || "portfolio",
-    use_filename: true,
-    unique_filename: true,
-  };
+  const folder = "portfolio";
+
+  // Only sign the params that will be sent in the upload form
+  const paramsToSign = { timestamp, folder };
 
   const signature = cloudinary.utils.api_sign_request(
-    params,
+    paramsToSign,
     process.env.CLOUDINARY_API_SECRET!
   );
 
   return NextResponse.json({
     signature,
     timestamp,
+    folder,
     cloudName: process.env.CLOUDINARY_CLOUD_NAME,
     apiKey: process.env.CLOUDINARY_API_KEY,
-    folder: params.folder,
   });
 }
