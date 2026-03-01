@@ -58,11 +58,13 @@ export async function POST(request: Request) {
     height: number;
     public_id: string;
   }>((resolve, reject) => {
+    const originalName = file.name.replace(/\.[^.]+$/, "");
     cloudinary.uploader
       .upload_stream(
         {
           folder: "portfolio",
           resource_type: resourceType,
+          ...(isModel && { public_id: `${originalName}-${Date.now()}` }),
         },
         (error, result) => {
           if (error || !result) return reject(error ?? new Error("Upload failed"));
