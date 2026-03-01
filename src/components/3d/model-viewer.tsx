@@ -29,6 +29,7 @@ import {
   Scissors,
   Ruler,
   Sun,
+  ChevronDown,
 } from "lucide-react";
 import Image from "next/image";
 import {
@@ -91,6 +92,36 @@ class ThreeErrorBoundary extends Component<
   }
 }
 
+// ── Toolbar Button ───────────────────────────────────────
+
+function ToolbarBtn({
+  onClick,
+  active,
+  label,
+  title,
+  children,
+}: {
+  onClick: () => void;
+  active?: boolean;
+  label: string;
+  title: string;
+  children: ReactNode;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`p-1.5 rounded-md transition-colors ${
+        active ? "bg-accent/20 text-accent" : "hover:bg-surface-overlay"
+      }`}
+      aria-label={label}
+      aria-pressed={active ?? undefined}
+      title={title}
+    >
+      {children}
+    </button>
+  );
+}
+
 // ── Main Component ───────────────────────────────────────
 
 export function ModelViewer({ url, poster }: ModelViewerProps) {
@@ -98,7 +129,7 @@ export function ModelViewer({ url, poster }: ModelViewerProps) {
   const profile = useLowEndProfile();
 
   // Core state
-  const [inView, setInView] = useState(!FLAGS.LAZY_MOUNT); // if lazy off, start visible
+  const [inView, setInView] = useState(!FLAGS.LAZY_MOUNT);
   const [mounted, setMounted] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -111,6 +142,7 @@ export function ModelViewer({ url, poster }: ModelViewerProps) {
   const [lightPreset, setLightPreset] = useState<LightPresetKey>(DEFAULT_LIGHT_PRESET);
   const [envIntensity, setEnvIntensity] = useState(1);
   const [sectionAxes, setSectionAxes] = useState({ x: false, y: false, z: false });
+  const [sectionOpen, setSectionOpen] = useState(false);
   const [measureActive, setMeasureActive] = useState(false);
 
   // Lazy mount via IntersectionObserver
@@ -140,6 +172,18 @@ export function ModelViewer({ url, poster }: ModelViewerProps) {
     return () => document.removeEventListener("fullscreenchange", onFs);
   }, []);
 
+  // ESC to exit fullscreen
+  useEffect(() => {
+    if (!isFullscreen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && document.fullscreenElement) {
+        document.exitFullscreen();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [isFullscreen]);
+
   const toggleFullscreen = useCallback(async () => {
     if (!containerRef.current) return;
     if (!document.fullscreenElement) {
@@ -147,12 +191,18 @@ export function ModelViewer({ url, poster }: ModelViewerProps) {
     } else {
       await document.exitFullscreen();
     }
-    emit("3d_interaction", { type: "fullscreen" });
-  }, []);
+    emit("3d_toolbar_fullscreen", { fullscreen: !isFullscreen });
+  }, [isFullscreen]);
 
   // Reset
   const handleReset = useCallback(() => {
     setResetKey((k) => k + 1);
+    setWireframe(false);
+    setSectionAxes({ x: false, y: false, z: false });
+    setMeasureActive(false);
+    setLightPreset(DEFAULT_LIGHT_PRESET);
+    setEnvIntensity(1);
+    emit("3d_toolbar_reset");
   }, []);
 
   const handleRetry = useCallback(() => {
@@ -190,10 +240,33 @@ export function ModelViewer({ url, poster }: ModelViewerProps) {
     setLightPreset((prev) => {
       const idx = presetKeys.indexOf(prev);
       const next = presetKeys[(idx + 1) % presetKeys.length];
-      emit("3d_interaction", { type: "env_toggle", preset: next });
+      emit("3d_toolbar_switch_env", { preset: next });
       return next;
     });
   }, [presetKeys]);
+
+  // Section axes helpers
+  const anySectionActive = sectionAxes.x || sectionAxes.y || sectionAxes.z;
+  const toggleSectionAxis = useCallback((axis: "x" | "y" | "z") => {
+    setSectionAxes((prev) => {
+      const next = { ...prev, [axis]: !prev[axis] };
+      emit("3d_toolbar_toggle_section", { axes: next });
+      return next;
+    });
+  }, []);
+
+  // Close section dropdown on outside click
+  const sectionRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!sectionOpen) return;
+    const onClick = (e: MouseEvent) => {
+      if (sectionRef.current && !sectionRef.current.contains(e.target as Node)) {
+        setSectionOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", onClick);
+    return () => document.removeEventListener("mousedown", onClick);
+  }, [sectionOpen]);
 
   // Derived
   const showCanvas = inView && !error;
@@ -212,91 +285,106 @@ export function ModelViewer({ url, poster }: ModelViewerProps) {
         <div className="flex items-center gap-1">
           {/* Reset */}
           {FLAGS.RESET_VIEW && (
-            <button
+            <ToolbarBtn
               onClick={handleReset}
-              className="p-1.5 rounded-md hover:bg-surface-overlay transition-colors"
-              aria-label="Reset view (R)"
+              label="Reset view (R)"
               title="Reset view (R)"
             >
               <RotateCcw size={16} />
-            </button>
+            </ToolbarBtn>
           )}
 
           {/* Wireframe toggle */}
           {FLAGS.WIREFRAME_TOGGLE && (
-            <button
+            <ToolbarBtn
               onClick={() => {
                 setWireframe((w) => !w);
-                emit("3d_interaction", { type: "wireframe" });
+                emit("3d_toolbar_toggle_wireframe", { wireframe: !wireframe });
               }}
-              className={`p-1.5 rounded-md transition-colors ${
-                wireframe ? "bg-accent/20 text-accent" : "hover:bg-surface-overlay"
-              }`}
-              aria-label="Wireframe"
+              active={wireframe}
+              label="Toggle wireframe"
               title="Wireframe"
             >
               <Grid3x3 size={16} />
-            </button>
+            </ToolbarBtn>
           )}
 
-          {/* Light preset */}
-          {FLAGS.LIGHT_PRESETS && (
-            <button
-              onClick={cycleLightPreset}
-              className="p-1.5 rounded-md hover:bg-surface-overlay transition-colors"
-              aria-label={`Lighting: ${LIGHT_PRESETS[lightPreset].label}`}
-              title={`Lighting: ${LIGHT_PRESETS[lightPreset].label}`}
-            >
-              <Sun size={16} />
-            </button>
-          )}
-
-          {/* Section planes */}
+          {/* Section planes with dropdown */}
           {FLAGS.SECTION_PLANES && (
-            <button
-              onClick={() =>
-                setSectionAxes((prev) => ({
-                  x: !prev.x,
-                  y: prev.y,
-                  z: prev.z,
-                }))
-              }
-              className={`p-1.5 rounded-md transition-colors ${
-                sectionAxes.x || sectionAxes.y || sectionAxes.z
-                  ? "bg-accent/20 text-accent"
-                  : "hover:bg-surface-overlay"
-              }`}
-              aria-label="Section cut"
-              title="Section cut (X)"
-            >
-              <Scissors size={16} />
-            </button>
+            <div ref={sectionRef} className="relative">
+              <button
+                onClick={() => setSectionOpen((o) => !o)}
+                className={`flex items-center gap-0.5 p-1.5 rounded-md transition-colors ${
+                  anySectionActive
+                    ? "bg-accent/20 text-accent"
+                    : "hover:bg-surface-overlay"
+                }`}
+                aria-label="Section planes"
+                aria-pressed={anySectionActive}
+                title="Section planes (X/Y/Z)"
+              >
+                <Scissors size={16} />
+                <ChevronDown size={12} />
+              </button>
+              {sectionOpen && (
+                <div className="absolute right-0 top-full mt-1 bg-surface border border-border rounded-lg shadow-lg z-50 min-w-[120px] py-1">
+                  {(["x", "y", "z"] as const).map((axis) => (
+                    <button
+                      key={axis}
+                      onClick={() => toggleSectionAxis(axis)}
+                      className={`w-full flex items-center justify-between px-3 py-1.5 text-xs hover:bg-surface-overlay transition-colors ${
+                        sectionAxes[axis] ? "text-accent font-medium" : "text-ink-muted"
+                      }`}
+                      aria-pressed={sectionAxes[axis]}
+                    >
+                      <span>Axis {axis.toUpperCase()}</span>
+                      {sectionAxes[axis] && (
+                        <span className="w-2 h-2 rounded-full bg-accent" />
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           )}
 
           {/* Measure */}
           {FLAGS.MEASURE_TOOL && (
-            <button
-              onClick={() => setMeasureActive((m) => !m)}
-              className={`p-1.5 rounded-md transition-colors ${
-                measureActive ? "bg-accent/20 text-accent" : "hover:bg-surface-overlay"
-              }`}
-              aria-label="Measure"
-              title="Measure"
+            <ToolbarBtn
+              onClick={() => {
+                setMeasureActive((m) => !m);
+                emit("3d_toolbar_toggle_measure", { active: !measureActive });
+              }}
+              active={measureActive}
+              label="Measure distance"
+              title="Measure (2-point)"
             >
               <Ruler size={16} />
-            </button>
+            </ToolbarBtn>
+          )}
+
+          {/* Light preset */}
+          {FLAGS.LIGHT_PRESETS && (
+            <ToolbarBtn
+              onClick={cycleLightPreset}
+              label={`Lighting: ${LIGHT_PRESETS[lightPreset].label}`}
+              title={`Lighting: ${LIGHT_PRESETS[lightPreset].label} — click to cycle`}
+            >
+              <Sun size={16} />
+            </ToolbarBtn>
           )}
 
           <div className="w-px h-4 bg-border mx-1" />
 
           {/* Fullscreen */}
-          <button
+          <ToolbarBtn
             onClick={toggleFullscreen}
-            className="p-1.5 rounded-md hover:bg-surface-overlay transition-colors"
-            aria-label={isFullscreen ? "Thoát toàn màn hình" : "Toàn màn hình"}
+            active={isFullscreen}
+            label={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
+            title={isFullscreen ? "Exit fullscreen (Esc)" : "Fullscreen"}
           >
             {isFullscreen ? <Minimize size={16} /> : <Maximize size={16} />}
-          </button>
+          </ToolbarBtn>
         </div>
       </div>
 
@@ -310,8 +398,13 @@ export function ModelViewer({ url, poster }: ModelViewerProps) {
             max="3"
             step="0.1"
             value={envIntensity}
-            onChange={(e) => setEnvIntensity(parseFloat(e.target.value))}
+            onChange={(e) => {
+              const v = parseFloat(e.target.value);
+              setEnvIntensity(v);
+              emit("3d_toolbar_intensity_change", { intensity: v });
+            }}
             className="flex-1 h-1 accent-accent"
+            aria-label="Environment intensity"
           />
         </div>
       )}

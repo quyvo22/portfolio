@@ -2,10 +2,9 @@
  * Lightweight telemetry helper.
  *
  * Migration notes:
- *   - Noop by default (FLAGS.TELEMETRY = false).
- *   - When enabled, dispatches CustomEvents on `window`.
- *   - To hook into analytics: listen for "3d_*" events or replace `emit`.
- *   - To revert: set FLAGS.TELEMETRY = false. No other changes needed.
+ *   - Noop when FLAGS.TELEMETRY = false.
+ *   - Dispatches CustomEvents on `window`.
+ *   - To revert: set FLAGS.TELEMETRY = false.
  */
 
 import { FLAGS } from "./3d-config";
@@ -13,7 +12,14 @@ import { FLAGS } from "./3d-config";
 type TelemetryEvent =
   | "3d_view_loaded"
   | "3d_view_error"
-  | "3d_interaction";
+  | "3d_interaction"
+  | "3d_toolbar_reset"
+  | "3d_toolbar_fullscreen"
+  | "3d_toolbar_toggle_wireframe"
+  | "3d_toolbar_toggle_section"
+  | "3d_toolbar_toggle_measure"
+  | "3d_toolbar_switch_env"
+  | "3d_toolbar_intensity_change";
 
 export function emit(event: TelemetryEvent, data?: Record<string, unknown>) {
   if (!FLAGS.TELEMETRY) return;

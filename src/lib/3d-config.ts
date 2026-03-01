@@ -19,17 +19,17 @@ export const FLAGS = {
   LIGHT_PRESETS: true,
   FALLBACK_POSTER: true,
 
-  // MEDIUM (opt-in)
+  // MEDIUM
   DOUBLE_CLICK_FOCUS: false,
-  WIREFRAME_TOGGLE: false,
-  ENV_HDRI_SWITCH: false,
-  LAZY_MOUNT: true, // was already on; set false to disable intersection observer
-  TELEMETRY: false,
+  WIREFRAME_TOGGLE: true,
+  ENV_HDRI_SWITCH: true,
+  LAZY_MOUNT: true,
+  TELEMETRY: true,
 
-  // ADVANCED (opt-in)
-  SECTION_PLANES: false,
-  MEASURE_TOOL: false,
-  LOW_END_PROFILE: false,
+  // ADVANCED
+  SECTION_PLANES: true,
+  MEASURE_TOOL: true,
+  LOW_END_PROFILE: true,
 } as const;
 
 // ── Camera ───────────────────────────────────────────────
