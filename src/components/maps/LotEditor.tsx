@@ -64,7 +64,7 @@ export function LotEditor({
     pathRef.current = coords;
     onChange({
       path: coords,
-      centroid: computeCentroid(coords),
+      centroid: computeCentroid(coords) ?? undefined,
     });
   }, [onChange]);
 
