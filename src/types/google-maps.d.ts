@@ -7,6 +7,7 @@ declare module "@googlemaps/three" {
       scene?: Scene;
       anchor?: google.maps.LatLngAltitudeLiteral | { lat: number; lng: number; altitude: number };
       animationMode?: string;
+      upAxis?: "Y" | "Z";
     });
     setMap(map: google.maps.Map | null): void;
     requestRedraw(): void;
