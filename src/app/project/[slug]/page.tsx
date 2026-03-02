@@ -6,6 +6,7 @@ import { ArrowLeft, FileText, Box } from "lucide-react";
 import { notFound } from "next/navigation";
 
 import { validateModelUrl } from "@/lib/validate-model-url";
+import { ProjectTabs } from "@/components/project/ProjectTabs";
 
 const PdfViewer = dynamicImport(
   () => import("@/components/ui/pdf-viewer").then((m) => m.PdfViewer),
@@ -37,6 +38,7 @@ export default async function ProjectPage({ params }: Props) {
 
   const showPdf = project.category === "pdf" || project.category === "both";
   const show3d = project.category === "3d" || project.category === "both";
+  const hasModel = validateModelUrl(project.modelUrl).valid;
 
   return (
     <section className="grid-container py-12">
@@ -48,7 +50,7 @@ export default async function ProjectPage({ params }: Props) {
       </Link>
 
       {/* Header */}
-      <div className="mb-10">
+      <div className="mb-6">
         <div className="flex flex-wrap gap-2 mb-3">
           {project.tags.map((tag) => (
             <span
@@ -65,6 +67,13 @@ export default async function ProjectPage({ params }: Props) {
         </p>
         <p className="mt-2 text-sm text-ink-faint">Năm: {project.year}</p>
       </div>
+
+      {/* Tab Navigation */}
+      <ProjectTabs
+        slug={slug}
+        modelUrl={project.modelUrl}
+        projectTitle={project.title}
+      />
 
       {/* Viewer placeholders */}
       <div className="grid-12">

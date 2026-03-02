@@ -19,7 +19,14 @@ type TelemetryEvent =
   | "3d_toolbar_toggle_section"
   | "3d_toolbar_toggle_measure"
   | "3d_toolbar_switch_env"
-  | "3d_toolbar_intensity_change";
+  | "3d_toolbar_intensity_change"
+  | "geocode_success"
+  | "elevation_fetch"
+  | "placement_confirmed"
+  | "lot_drawn"
+  | "map_camera_sync"
+  | "model_interaction"
+  | "fps_bucket";
 
 export function emit(event: TelemetryEvent, data?: Record<string, unknown>) {
   if (!FLAGS.TELEMETRY) return;

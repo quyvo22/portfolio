@@ -11,6 +11,7 @@ const nextConfig = {
       },
     ],
   },
+  transpilePackages: ["three"],
   webpack: (config) => {
     // react-pdf / pdfjs-dist may reference canvas as optional dependency
     config.resolve.alias.canvas = false;
