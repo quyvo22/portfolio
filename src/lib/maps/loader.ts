@@ -1,7 +1,7 @@
-import { Loader } from "@googlemaps/js-api-loader";
+import { setOptions, importLibrary } from "@googlemaps/js-api-loader";
 
-let loaderInstance: Loader | null = null;
-let mapsLibrary: typeof google.maps | null = null;
+let initialized = false;
+let mapsLib: { Map: typeof google.maps.Map } | null = null;
 
 export interface MapsLoaderOptions {
   apiKey: string;
@@ -17,23 +17,23 @@ export async function loadGoogleMaps({
   apiKey,
   mapId,
 }: MapsLoaderOptions): Promise<MapsLoaderResult> {
-  if (!mapsLibrary) {
-    if (!loaderInstance) {
-      loaderInstance = new Loader({
-        apiKey,
-        version: "weekly",
-        libraries: ["places", "geometry"],
-      });
-    }
-
-    await loaderInstance.load();
-    mapsLibrary = google.maps;
+  if (!initialized) {
+    setOptions({
+      key: apiKey,
+      v: "weekly",
+      libraries: ["places", "geometry"],
+    });
+    initialized = true;
   }
 
-  const lib = mapsLibrary;
+  if (!mapsLib) {
+    mapsLib = (await importLibrary("maps")) as { Map: typeof google.maps.Map };
+  }
+
+  const lib = mapsLib;
 
   return {
-    maps: lib,
+    maps: google.maps,
     createMap: (container, options) =>
       new lib.Map(container, { ...options, mapId }),
   };
