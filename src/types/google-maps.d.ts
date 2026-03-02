@@ -1,3 +1,28 @@
+declare module "@googlemaps/three" {
+  import { WebGLRenderer, Scene, Camera } from "three";
+
+  export class ThreeJSOverlayView {
+    constructor(options?: {
+      map?: google.maps.Map;
+      scene?: Scene;
+      anchor?: google.maps.LatLngAltitudeLiteral | { lat: number; lng: number; altitude: number };
+      animationMode?: string;
+    });
+    setMap(map: google.maps.Map | null): void;
+    requestRedraw(): void;
+    onAdd(): void;
+    onRemove(): void;
+    onContextRestored(options: { gl: WebGLRenderingContext }): void;
+    onDraw(options: { gl: WebGLRenderingContext; transformer: google.maps.CoordinateTransformer }): void;
+    scene: Scene;
+    camera: Camera;
+    overlay: google.maps.WebGLOverlayView;
+    latLngAltitudeToVector3(
+      latLngAlt: google.maps.LatLngAltitudeLiteral | { lat: number; lng: number; altitude: number }
+    ): import("three").Vector3;
+  }
+}
+
 declare namespace google.maps {
   interface MapOptions {
     mapId?: string;
