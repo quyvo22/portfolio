@@ -67,6 +67,6 @@ export function setPolygon(polygon: LotPolygon | null): LotPolygon | null {
   if (!polygon) return null;
   return {
     ...polygon,
-    centroid: computeCentroid(polygon.path),
+    centroid: computeCentroid(polygon.path) ?? undefined,
   };
 }
