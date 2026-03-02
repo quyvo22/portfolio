@@ -74,7 +74,7 @@ export function OnSiteCanvasWithLights({
       model.scale.setScalar(placement.scale);
       model.rotation.y = THREE.MathUtils.degToRad(placement.heading);
 
-      model.traverse((child) => {
+      model.traverse((child: THREE.Object3D) => {
         if ((child as THREE.Mesh).isMesh) {
           child.castShadow = !profile.lowEnd;
           child.receiveShadow = !profile.lowEnd;
