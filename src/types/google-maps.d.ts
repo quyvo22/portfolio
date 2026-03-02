@@ -15,6 +15,7 @@ declare module "@googlemaps/three" {
     onRemove(): void;
     onContextRestored(options: { gl: WebGLRenderingContext }): void;
     onDraw(options: { gl: WebGLRenderingContext; transformer: google.maps.CoordinateTransformer }): void;
+    anchor: google.maps.LatLngAltitudeLiteral | { lat: number; lng: number; altitude: number };
     scene: Scene;
     camera: Camera;
     overlay: google.maps.WebGLOverlayView;
