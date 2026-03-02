@@ -17,27 +17,24 @@ export async function loadGoogleMaps({
   apiKey,
   mapId,
 }: MapsLoaderOptions): Promise<MapsLoaderResult> {
-  if (mapsLibrary) {
-    return {
-      maps: mapsLibrary,
-      createMap: (container, options) => new mapsLibrary.Map(container, options),
-    };
+  if (!mapsLibrary) {
+    if (!loaderInstance) {
+      loaderInstance = new Loader({
+        apiKey,
+        version: "weekly",
+        libraries: ["places", "geometry"],
+      });
+    }
+
+    await loaderInstance.load();
+    mapsLibrary = google.maps;
   }
 
-  if (!loaderInstance) {
-    loaderInstance = new Loader({
-      apiKey,
-      version: "weekly",
-      libraries: ["places", "geometry"],
-    });
-  }
-
-  await loaderInstance.load();
-  mapsLibrary = google.maps;
+  const lib = mapsLibrary;
 
   return {
-    maps: mapsLibrary,
+    maps: lib,
     createMap: (container, options) =>
-      new mapsLibrary.Map(container, { ...options, mapId }),
+      new lib.Map(container, { ...options, mapId }),
   };
 }
