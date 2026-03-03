@@ -1,4 +1,5 @@
 import { setOptions, importLibrary } from "@googlemaps/js-api-loader";
+import { patchIntersectionObserver } from "@/lib/safe-observer";
 
 let initialized = false;
 let mapsLib: { Map: typeof google.maps.Map } | null = null;
@@ -17,6 +18,11 @@ export async function loadGoogleMaps({
   apiKey,
   mapId,
 }: MapsLoaderOptions): Promise<MapsLoaderResult> {
+  // Guard IntersectionObserver before Google Maps API loads —
+  // the vector/WebGL map internally calls observe() and can crash
+  // if the container element is not yet in the DOM.
+  patchIntersectionObserver();
+
   if (!initialized) {
     setOptions({
       key: apiKey,

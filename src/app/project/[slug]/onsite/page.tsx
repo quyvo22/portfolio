@@ -95,9 +95,10 @@ export default function OnsitePage() {
 
     loadGoogleMaps({ apiKey: GOOGLE_MAPS_API_KEY, mapId: MAP_ID })
       .then(({ maps, createMap }) => {
-        if (!mapContainerRef.current) return;
+        const container = mapContainerRef.current;
+        if (!(container instanceof HTMLElement)) return;
 
-        const map = createMap(mapContainerRef.current, {
+        const map = createMap(container, {
           center: { lat: placement.lat, lng: placement.lng },
           zoom: MAP_CONFIG.zoom,
           tilt: MAP_CONFIG.tilt,

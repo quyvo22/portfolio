@@ -147,7 +147,9 @@ export function ModelViewer({ url, poster }: ModelViewerProps) {
 
   // Lazy mount via IntersectionObserver
   useEffect(() => {
-    if (!FLAGS.LAZY_MOUNT || !containerRef.current) return;
+    if (!FLAGS.LAZY_MOUNT) return;
+    const el = containerRef.current;
+    if (!(el instanceof Element)) return;
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
@@ -157,7 +159,7 @@ export function ModelViewer({ url, poster }: ModelViewerProps) {
       },
       { rootMargin: "200px" }
     );
-    observer.observe(containerRef.current);
+    observer.observe(el);
     return () => observer.disconnect();
   }, []);
 
