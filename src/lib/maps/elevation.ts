@@ -2,24 +2,28 @@ import type { Coords, ElevationResult } from "../onsite/types";
 import { emit } from "../telemetry";
 
 export async function getElevation(
-  coords: Coords,
-  elevator: google.maps.ElevationService
+  coords: Coords
 ): Promise<ElevationResult> {
-  return new Promise((resolve, reject) => {
-    elevator.getElevationForLocations(
-      { locations: [{ lat: coords.lat, lng: coords.lng }] },
-      (results, status) => {
-        if (status === "OK" && results?.[0]) {
-          const result = {
-            elevation: results[0].elevation,
-            location: { lat: results[0].location.lat(), lng: results[0].location.lng() },
-          };
-          emit("elevation_fetch", { elevation: result.elevation });
-          resolve(result);
-        } else {
-          reject(new Error(`Elevation failed: ${status}`));
-        }
-      }
-    );
-  });
+  const url = new URL("https://api.open-meteo.com/v1/elevation");
+  url.searchParams.set("latitude", coords.lat.toString());
+  url.searchParams.set("longitude", coords.lng.toString());
+
+  const res = await fetch(url.toString());
+
+  if (!res.ok) {
+    throw new Error(`Elevation failed: HTTP ${res.status}`);
+  }
+
+  const data = await res.json();
+  if (!data.elevation?.length) {
+    throw new Error("Elevation failed: no data");
+  }
+
+  const result: ElevationResult = {
+    elevation: data.elevation[0],
+    location: { lat: coords.lat, lng: coords.lng },
+  };
+
+  emit("elevation_fetch", { elevation: result.elevation });
+  return result;
 }

@@ -3,16 +3,15 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { Search, MapPin, AlertCircle } from "lucide-react";
 import { geocodeAddress } from "@/lib/maps/geocode";
-import { cachedGeocode, debounce, COST_GUARD } from "@/lib/maps/cost";
+import { cachedGeocode, COST_GUARD } from "@/lib/maps/cost";
 import type { GeocodeResult } from "@/lib/onsite/types";
 
 interface AddressFormProps {
-  geocoder: google.maps.Geocoder;
   onResult: (result: GeocodeResult) => void;
   className?: string;
 }
 
-export function AddressForm({ geocoder, onResult, className }: AddressFormProps) {
+export function AddressForm({ onResult, className }: AddressFormProps) {
   const [address, setAddress] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -31,7 +30,7 @@ export function AddressForm({ geocoder, onResult, className }: AddressFormProps)
     try {
       const result = await cachedGeocode(
         address.trim(),
-        (addr) => geocodeAddress(addr, geocoder)
+        (addr) => geocodeAddress(addr)
       );
       setLastResult(result.formatted);
       onResult(result);
@@ -40,7 +39,7 @@ export function AddressForm({ geocoder, onResult, className }: AddressFormProps)
     } finally {
       setLoading(false);
     }
-  }, [address, geocoder, onResult]);
+  }, [address, onResult]);
 
   const handleChange = useCallback((value: string) => {
     setAddress(value);

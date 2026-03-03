@@ -1,13 +1,15 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
-import { ThreeJSOverlayView } from "@googlemaps/three";
+import maplibregl, { type CustomLayerInterface } from "maplibre-gl";
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import type { PlacementTransform, Coords } from "@/lib/onsite/types";
 
+const LAYER_ID = "three-overlay-layer";
+
 interface ThreeJSOverlayCanvasProps {
-  map: google.maps.Map;
+  map: maplibregl.Map;
   modelUrl: string;
   placement: PlacementTransform;
   ghostAnchor?: Coords | null;
@@ -25,10 +27,16 @@ export function ThreeJSOverlayCanvas({
   onError,
   onLoaded,
 }: ThreeJSOverlayCanvasProps) {
-  const overlayRef = useRef<ThreeJSOverlayView | null>(null);
+  const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);
+  const cameraRef = useRef<THREE.Camera>(new THREE.Camera());
   const modelRef = useRef<THREE.Object3D | null>(null);
   const [loading, setLoading] = useState(true);
+  const placementRef = useRef(placement);
+
+  useEffect(() => {
+    placementRef.current = placement;
+  }, [placement]);
 
   const loadModel = useCallback(async () => {
     if (!modelUrl || !sceneRef.current) return;
@@ -66,45 +74,82 @@ export function ThreeJSOverlayCanvas({
 
       setLoading(false);
       onLoaded?.();
-      overlayRef.current?.requestRedraw();
+      map.triggerRepaint();
     } catch (error) {
       console.error("Model load error:", error);
       onError?.(error instanceof Error ? error.message : "Failed to load model");
       setLoading(false);
     }
-  }, [modelUrl, placement.scale, placement.heading, onProgress, onError, onLoaded]);
+  }, [modelUrl, placement.scale, placement.heading, onProgress, onError, onLoaded, map]);
 
   useEffect(() => {
     if (!map) return;
 
-    const overlay = new ThreeJSOverlayView({
-      map,
-      anchor: { lat: placement.lat, lng: placement.lng, altitude: placement.altitude },
-      upAxis: "Y",
-    });
+    const scene = new THREE.Scene();
+    sceneRef.current = scene;
 
-    overlayRef.current = overlay;
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+    scene.add(ambientLight);
 
-    overlay.onAdd = () => {
-      const scene = new THREE.Scene();
-      sceneRef.current = scene;
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+    directionalLight.position.set(5, 10, 7.5);
+    directionalLight.castShadow = true;
+    scene.add(directionalLight);
 
-      const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
-      scene.add(ambientLight);
+    const customLayer: CustomLayerInterface = {
+      id: LAYER_ID,
+      type: "custom",
+      renderingMode: "3d",
 
-      const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-      directionalLight.position.set(5, 10, 7.5);
-      directionalLight.castShadow = true;
-      scene.add(directionalLight);
+      onAdd(_map, gl) {
+        const renderer = new THREE.WebGLRenderer({
+          canvas: _map.getCanvas(),
+          context: gl,
+          antialias: true,
+        });
+        renderer.autoClear = false;
+        rendererRef.current = renderer;
 
-      loadModel();
+        loadModel();
+      },
+
+      render(_gl, matrix) {
+        const p = placementRef.current;
+        const anchor = maplibregl.MercatorCoordinate.fromLngLat(
+          [p.lng, p.lat],
+          p.altitude
+        );
+
+        const scale = anchor.meterInMercatorCoordinateUnits();
+
+        const m = new THREE.Matrix4()
+          .makeTranslation(anchor.x, anchor.y, anchor.z ?? 0)
+          .scale(new THREE.Vector3(scale, -scale, scale));
+
+        cameraRef.current.projectionMatrix = new THREE.Matrix4()
+          .fromArray(matrix as unknown as number[])
+          .multiply(m);
+
+        if (rendererRef.current && sceneRef.current) {
+          rendererRef.current.resetState();
+          rendererRef.current.render(sceneRef.current, cameraRef.current);
+        }
+      },
     };
 
+    if (map.getLayer(LAYER_ID)) {
+      map.removeLayer(LAYER_ID);
+    }
+    map.addLayer(customLayer);
+
     return () => {
-      overlay.setMap(null);
+      if (map.getLayer(LAYER_ID)) {
+        map.removeLayer(LAYER_ID);
+      }
       if (sceneRef.current && modelRef.current) {
         sceneRef.current.remove(modelRef.current);
       }
+      rendererRef.current = null;
     };
   }, [map, loadModel]);
 
@@ -112,20 +157,13 @@ export function ThreeJSOverlayCanvas({
     if (modelRef.current) {
       modelRef.current.scale.setScalar(placement.scale);
       modelRef.current.rotation.y = THREE.MathUtils.degToRad(placement.heading);
-      overlayRef.current?.requestRedraw();
+      map.triggerRepaint();
     }
-  }, [placement.scale, placement.heading]);
+  }, [placement.scale, placement.heading, map]);
 
   useEffect(() => {
-    if (overlayRef.current) {
-      overlayRef.current.anchor = {
-        lat: placement.lat,
-        lng: placement.lng,
-        altitude: placement.altitude,
-      };
-      overlayRef.current.requestRedraw();
-    }
-  }, [placement.lat, placement.lng, placement.altitude]);
+    map.triggerRepaint();
+  }, [placement.lat, placement.lng, placement.altitude, map]);
 
   return null;
 }

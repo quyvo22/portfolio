@@ -1,16 +1,31 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
+import maplibregl from "maplibre-gl";
 import { Pentagon, Target, Trash2 } from "lucide-react";
 import type { LotPolygon, Coords } from "@/lib/onsite/types";
 import { computeCentroid } from "@/lib/onsite/state";
 
+const SOURCE_ID = "lot-polygon-source";
+const FILL_LAYER_ID = "lot-polygon-fill";
+const LINE_LAYER_ID = "lot-polygon-line";
+
 interface LotEditorProps {
-  map: google.maps.Map;
+  map: maplibregl.Map;
   polygon: LotPolygon | null;
   onChange: (polygon: LotPolygon | null) => void;
   onSnapToCentroid?: () => void;
   active: boolean;
+}
+
+function coordsToGeoJSON(path: Coords[]): GeoJSON.Feature<GeoJSON.Polygon> {
+  const ring = [...path.map((p) => [p.lng, p.lat] as [number, number])];
+  if (ring.length > 0) ring.push(ring[0]); // close ring
+  return {
+    type: "Feature",
+    properties: {},
+    geometry: { type: "Polygon", coordinates: [ring] },
+  };
 }
 
 export function LotEditor({
@@ -20,87 +35,131 @@ export function LotEditor({
   onSnapToCentroid,
   active,
 }: LotEditorProps) {
-  const polygonRef = useRef<google.maps.Polygon | null>(null);
   const [editing, setEditing] = useState(false);
-  const pathRef = useRef<Coords[]>([]);
+  const vertexMarkersRef = useRef<maplibregl.Marker[]>([]);
 
-  const createPolygon = useCallback(() => {
-    if (polygonRef.current) {
-      polygonRef.current.setMap(null);
-    }
+  const clearVertexMarkers = useCallback(() => {
+    vertexMarkersRef.current.forEach((m) => m.remove());
+    vertexMarkersRef.current = [];
+  }, []);
 
-    if (!polygon) return;
+  const updateSource = useCallback(
+    (path: Coords[] | null) => {
+      const source = map.getSource(SOURCE_ID) as maplibregl.GeoJSONSource | undefined;
+      if (!source) return;
 
-    const poly = new google.maps.Polygon({
-      paths: polygon.path.map((p) => ({ lat: p.lat, lng: p.lng })),
-      strokeColor: "#3b82f6",
-      strokeOpacity: 0.8,
-      strokeWeight: 2,
-      fillColor: "#3b82f6",
-      fillOpacity: 0.2,
-      editable: editing,
-      draggable: false,
-    });
+      if (!path || path.length < 3) {
+        source.setData({ type: "FeatureCollection", features: [] });
+        return;
+      }
+      source.setData(coordsToGeoJSON(path));
+    },
+    [map]
+  );
 
-    poly.setMap(map);
-    polygonRef.current = poly;
+  const syncVertexMarkers = useCallback(
+    (path: Coords[]) => {
+      clearVertexMarkers();
+      if (!editing || !path.length) return;
 
-    google.maps.event.addListener(poly.getPath(), "set_at", updatePath);
-    google.maps.event.addListener(poly.getPath(), "insert_at", updatePath);
-    google.maps.event.addListener(poly.getPath(), "remove_at", updatePath);
-  }, [map, polygon, editing]);
+      const markers = path.map((coord, i) => {
+        const el = document.createElement("div");
+        el.style.width = "10px";
+        el.style.height = "10px";
+        el.style.borderRadius = "50%";
+        el.style.backgroundColor = "#3b82f6";
+        el.style.border = "2px solid #ffffff";
+        el.style.cursor = "grab";
 
-  const updatePath = useCallback(() => {
-    if (!polygonRef.current) return;
+        const marker = new maplibregl.Marker({ element: el, draggable: true })
+          .setLngLat([coord.lng, coord.lat])
+          .addTo(map);
 
-    const path = polygonRef.current.getPath();
-    const coords: Coords[] = [];
+        marker.on("dragend", () => {
+          const lngLat = marker.getLngLat();
+          const newPath = [...path];
+          newPath[i] = { lat: lngLat.lat, lng: lngLat.lng };
+          updateSource(newPath);
+          onChange({ path: newPath, centroid: computeCentroid(newPath) ?? undefined });
+        });
 
-    for (let i = 0; i < path.getLength(); i++) {
-      const pt = path.getAt(i);
-      coords.push({ lat: pt.lat(), lng: pt.lng() });
-    }
+        return marker;
+      });
 
-    pathRef.current = coords;
-    onChange({
-      path: coords,
-      centroid: computeCentroid(coords) ?? undefined,
-    });
-  }, [onChange]);
+      vertexMarkersRef.current = markers;
+    },
+    [map, editing, clearVertexMarkers, updateSource, onChange]
+  );
 
+  // Add/remove source and layers
   useEffect(() => {
     if (!active) {
-      if (polygonRef.current) {
-        polygonRef.current.setMap(null);
-        polygonRef.current = null;
-      }
+      clearVertexMarkers();
+      if (map.getLayer(FILL_LAYER_ID)) map.removeLayer(FILL_LAYER_ID);
+      if (map.getLayer(LINE_LAYER_ID)) map.removeLayer(LINE_LAYER_ID);
+      if (map.getSource(SOURCE_ID)) map.removeSource(SOURCE_ID);
       return;
     }
 
-    createPolygon();
+    if (!map.getSource(SOURCE_ID)) {
+      map.addSource(SOURCE_ID, {
+        type: "geojson",
+        data: { type: "FeatureCollection", features: [] },
+      });
+    }
+
+    if (!map.getLayer(FILL_LAYER_ID)) {
+      map.addLayer({
+        id: FILL_LAYER_ID,
+        type: "fill",
+        source: SOURCE_ID,
+        paint: {
+          "fill-color": "#3b82f6",
+          "fill-opacity": 0.2,
+        },
+      });
+    }
+
+    if (!map.getLayer(LINE_LAYER_ID)) {
+      map.addLayer({
+        id: LINE_LAYER_ID,
+        type: "line",
+        source: SOURCE_ID,
+        paint: {
+          "line-color": "#3b82f6",
+          "line-width": 2,
+          "line-opacity": 0.8,
+        },
+      });
+    }
+
+    if (polygon) {
+      updateSource(polygon.path);
+      syncVertexMarkers(polygon.path);
+    }
 
     return () => {
-      if (polygonRef.current) {
-        polygonRef.current.setMap(null);
-        polygonRef.current = null;
-      }
+      clearVertexMarkers();
+      if (map.getLayer(FILL_LAYER_ID)) map.removeLayer(FILL_LAYER_ID);
+      if (map.getLayer(LINE_LAYER_ID)) map.removeLayer(LINE_LAYER_ID);
+      if (map.getSource(SOURCE_ID)) map.removeSource(SOURCE_ID);
     };
-  }, [active, createPolygon]);
+  }, [active, map, polygon, updateSource, syncVertexMarkers, clearVertexMarkers]);
 
+  // Sync editing state with vertex markers
   useEffect(() => {
-    if (polygonRef.current && active) {
-      polygonRef.current.setEditable(editing);
+    if (active && polygon) {
+      syncVertexMarkers(polygon.path);
+    } else {
+      clearVertexMarkers();
     }
-  }, [editing, active]);
+  }, [editing, active, polygon, syncVertexMarkers, clearVertexMarkers]);
 
   const handleClear = useCallback(() => {
     onChange(null);
-    pathRef.current = [];
-    if (polygonRef.current) {
-      polygonRef.current.setMap(null);
-      polygonRef.current = null;
-    }
-  }, [onChange]);
+    clearVertexMarkers();
+    updateSource(null);
+  }, [onChange, clearVertexMarkers, updateSource]);
 
   if (!active) return null;
 

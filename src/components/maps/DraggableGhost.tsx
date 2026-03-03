@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useCallback } from "react";
-import { Home } from "lucide-react";
+import { useEffect, useRef } from "react";
+import maplibregl from "maplibre-gl";
 import type { Coords } from "@/lib/onsite/types";
 
 interface DraggableGhostProps {
-  map: google.maps.Map;
+  map: maplibregl.Map;
   position: Coords | null;
   polygon: Coords[] | null;
   onPositionChange: (coords: Coords) => void;
@@ -21,49 +21,45 @@ export function DraggableGhost({
   onConfirm,
   draggable,
 }: DraggableGhostProps) {
-  const markerRef = useRef<google.maps.Marker | null>(null);
+  const markerRef = useRef<maplibregl.Marker | null>(null);
 
   useEffect(() => {
     if (!position) return;
 
     if (markerRef.current) {
-      markerRef.current.setPosition(position);
+      markerRef.current.setLngLat([position.lng, position.lat]);
       markerRef.current.setDraggable(draggable);
       return;
     }
 
-    const marker = new google.maps.Marker({
-      position,
-      map,
-      draggable,
-      icon: {
-        path: google.maps.SymbolPath.CIRCLE,
-        scale: 8,
-        fillColor: "#3b82f6",
-        fillOpacity: 0.6,
-        strokeColor: "#ffffff",
-        strokeWeight: 2,
-      },
-      title: "Drag to place model",
-    });
+    const el = document.createElement("div");
+    el.style.width = "16px";
+    el.style.height = "16px";
+    el.style.borderRadius = "50%";
+    el.style.backgroundColor = "rgba(59, 130, 246, 0.6)";
+    el.style.border = "2px solid #ffffff";
+    el.style.cursor = draggable ? "grab" : "default";
+
+    const marker = new maplibregl.Marker({ element: el, draggable })
+      .setLngLat([position.lng, position.lat])
+      .addTo(map);
 
     markerRef.current = marker;
 
-    google.maps.event.addListener(marker, "dragend", () => {
-      const pos = marker.getPosition();
-      if (pos) {
-        onPositionChange({ lat: pos.lat(), lng: pos.lng() });
-      }
+    marker.on("dragend", () => {
+      const lngLat = marker.getLngLat();
+      onPositionChange({ lat: lngLat.lat, lng: lngLat.lng });
     });
 
     return () => {
-      marker.setMap(null);
+      marker.remove();
+      markerRef.current = null;
     };
   }, [map, position, draggable, onPositionChange]);
 
   useEffect(() => {
     if (markerRef.current && position) {
-      markerRef.current.setPosition(position);
+      markerRef.current.setLngLat([position.lng, position.lat]);
     }
   }, [position]);
 

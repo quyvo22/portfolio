@@ -13,8 +13,10 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import Link from "next/link";
 import { ArrowLeft, MapPin, Home, Check, Edit3 } from "lucide-react";
+import maplibregl from "maplibre-gl";
+import "maplibre-gl/dist/maplibre-gl.css";
 import { ProjectTabs } from "@/components/project/ProjectTabs";
-import { loadGoogleMaps } from "@/lib/maps/loader";
+import { loadMap } from "@/lib/maps/loader";
 import { OnSiteCanvasWithLights } from "@/components/maps/OnSiteCanvasWithLights";
 import { AddressForm } from "@/components/maps/AddressForm";
 import { PlacementControls } from "@/components/maps/PlacementControls";
@@ -38,9 +40,6 @@ import type { OnsitePlacementState, GeocodeResult, Coords } from "@/lib/onsite/t
 import { useParams, useSearchParams } from "next/navigation";
 import { emit } from "@/lib/telemetry";
 
-const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
-const MAP_ID = process.env.NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID || "";
-
 export default function OnsitePageWithSun() {
   const params = useParams();
   const searchParams = useSearchParams();
@@ -49,9 +48,7 @@ export default function OnsitePageWithSun() {
   const projectTitle = searchParams.get("title") || "Project";
 
   const mapContainerRef = useRef<HTMLDivElement>(null);
-  const [mapInstance, setMapInstance] = useState<google.maps.Map | null>(null);
-  const [geocoder, setGeocoder] = useState<google.maps.Geocoder | null>(null);
-  const [elevator, setElevator] = useState<google.maps.ElevationService | null>(null);
+  const [mapInstance, setMapInstance] = useState<maplibregl.Map | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [progress, setProgress] = useState(0);
@@ -97,44 +94,49 @@ export default function OnsitePageWithSun() {
   }, [slug, state]);
 
   useEffect(() => {
-    if (!GOOGLE_MAPS_API_KEY) {
-      setError("Google Maps API key not configured");
-      setLoading(false);
-      return;
-    }
+    const container = mapContainerRef.current;
+    if (!container) return;
 
-    loadGoogleMaps({ apiKey: GOOGLE_MAPS_API_KEY, mapId: MAP_ID })
-      .then(({ maps, createMap }) => {
-        if (!mapContainerRef.current) return;
+    try {
+      const { createMap } = loadMap();
+      const map = createMap(container, {
+        center: { lat: placement.lat, lng: placement.lng },
+        zoom: MAP_CONFIG.zoom,
+        pitch: perfProfile.lowEnd ? 0 : MAP_CONFIG.pitch,
+        bearing: perfProfile.lowEnd ? 0 : MAP_CONFIG.bearing,
+      });
 
-        const map = createMap(mapContainerRef.current, {
-          center: { lat: placement.lat, lng: placement.lng },
-          zoom: MAP_CONFIG.zoom,
-          tilt: MAP_CONFIG.tilt,
-          heading: MAP_CONFIG.heading,
-          mapTypeId: MAP_CONFIG.mapTypeId,
-        });
-
+      map.on("load", () => {
         setMapInstance(map);
-        setGeocoder(new maps.Geocoder());
-        setElevator(new maps.ElevationService());
-        setLoading(false);
-      })
-      .catch((err) => {
-        setError(err.message || "Failed to load Google Maps");
         setLoading(false);
       });
+
+      map.on("error", (e) => {
+        console.error("Map error:", e);
+        setError("Failed to load map tiles");
+        setLoading(false);
+      });
+
+      return () => {
+        map.remove();
+      };
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to initialize map");
+      setLoading(false);
+    }
   }, []);
 
   const handleGeocodeResult = useCallback(
     async (result: GeocodeResult) => {
-      if (!mapInstance || !elevator) return;
+      if (!mapInstance) return;
 
-      mapInstance.setCenter(result.coords);
-      mapInstance.setZoom(MAP_CONFIG.zoom);
+      mapInstance.flyTo({
+        center: [result.coords.lng, result.coords.lat],
+        zoom: MAP_CONFIG.zoom,
+      });
 
       try {
-        const elevResult = await getElevation(result.coords, elevator);
+        const elevResult = await getElevation(result.coords);
         setState((prev) => ({
           ...prev,
           ghostAnchor: result.coords,
@@ -155,7 +157,7 @@ export default function OnsitePageWithSun() {
         }));
       }
     },
-    [mapInstance, elevator]
+    [mapInstance]
   );
 
   const handlePlacementChange = useCallback((updates: Partial<typeof placement>) => {
@@ -174,7 +176,9 @@ export default function OnsitePageWithSun() {
     });
     setSunState({ date: new Date(), hour: 12 });
     if (mapInstance) {
-      mapInstance.setCenter({ lat: DEFAULT_PLACEMENT.lat, lng: DEFAULT_PLACEMENT.lng });
+      mapInstance.flyTo({
+        center: [DEFAULT_PLACEMENT.lng, DEFAULT_PLACEMENT.lat],
+      });
     }
   }, [mapInstance]);
 
@@ -328,12 +332,10 @@ export default function OnsitePageWithSun() {
 
           <ShareBar state={getShareState()} onReset={handleReset} />
 
-          {geocoder && (
-            <div className="card p-4">
-              <h3 className="text-sm font-semibold mb-3">Find Location</h3>
-              <AddressForm geocoder={geocoder} onResult={handleGeocodeResult} />
-            </div>
-          )}
+          <div className="card p-4">
+            <h3 className="text-sm font-semibold mb-3">Find Location</h3>
+            <AddressForm onResult={handleGeocodeResult} />
+          </div>
 
           <div className="card p-4">
             <h3 className="text-sm font-semibold mb-3">Placement Controls</h3>

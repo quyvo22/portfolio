@@ -15,9 +15,31 @@ export const SCALE_MAX = 5;
 
 export const MAP_CONFIG = {
   zoom: 18,
-  tilt: 45,
-  heading: 0,
-  mapTypeId: "satellite" as const,
+  pitch: 45,
+  bearing: 0,
+  style: {
+    version: 8 as const,
+    sources: {
+      "esri-satellite": {
+        type: "raster" as const,
+        tiles: [
+          "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+        ],
+        tileSize: 256,
+        attribution: "Tiles &copy; Esri",
+        maxzoom: 19,
+      },
+    },
+    layers: [
+      {
+        id: "esri-satellite-layer",
+        type: "raster" as const,
+        source: "esri-satellite",
+        minzoom: 0,
+        maxzoom: 19,
+      },
+    ],
+  },
 };
 
 export const STORAGE_CONFIG = {
