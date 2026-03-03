@@ -93,7 +93,7 @@ export default function OnsitePage() {
       return;
     }
 
-    loadGoogleMaps({ apiKey: GOOGLE_MAPS_API_KEY, mapId: MAP_ID })
+    loadGoogleMaps({ apiKey: GOOGLE_MAPS_API_KEY, mapId: MAP_ID || undefined })
       .then(({ maps, createMap }) => {
         const container = mapContainerRef.current;
         if (!(container instanceof HTMLElement)) return;

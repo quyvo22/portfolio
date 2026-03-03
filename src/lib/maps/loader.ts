@@ -40,7 +40,15 @@ export async function loadGoogleMaps({
 
   return {
     maps: google.maps,
-    createMap: (container, options) =>
-      new lib.Map(container, { ...options, mapId }),
+    createMap: (container, options) => {
+      const mapOptions = { ...options, ...(mapId ? { mapId } : {}) };
+      try {
+        return new lib.Map(container, mapOptions);
+      } catch {
+        // Fallback: retry without mapId (vector map) if it caused the error
+        console.warn("[maps/loader] Map creation failed with mapId, retrying without it");
+        return new lib.Map(container, options);
+      }
+    },
   };
 }
