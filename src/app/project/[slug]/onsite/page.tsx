@@ -298,6 +298,10 @@ export default function OnsitePage() {
     setState((prev) => ({
       ...prev,
       ghostAnchor: coords,
+      placement: updatePlacement(prev.placement, {
+        lat: coords.lat,
+        lng: coords.lng,
+      }),
     }));
   }, []);
 
@@ -318,8 +322,21 @@ export default function OnsitePage() {
   }, [state.ghostAnchor, state.mode]);
 
   const setMode = useCallback((mode: OnsitePlacementState["mode"]) => {
-    setState((prev) => ({ ...prev, mode }));
-  }, []);
+    setState((prev) => {
+      // If switching to "place" and no ghost yet, drop one at map center
+      if (mode === "place" && !prev.ghostAnchor && mapInstance) {
+        const center = mapInstance.getCenter();
+        const coords = { lat: center.lat, lng: center.lng };
+        return {
+          ...prev,
+          mode,
+          ghostAnchor: coords,
+          placement: updatePlacement(prev.placement, coords),
+        };
+      }
+      return { ...prev, mode };
+    });
+  }, [mapInstance]);
 
   if (!modelUrl) {
     return (
