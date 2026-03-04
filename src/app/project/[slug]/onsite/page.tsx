@@ -39,7 +39,9 @@ export default function OnsitePage() {
   const params = useParams();
   const searchParams = useSearchParams();
   const slug = params.slug as string;
-  const modelUrl = searchParams.get("modelUrl") || "";
+  const DEMO_MODEL =
+    "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/BoxAnimated/glTF-Binary/BoxAnimated.glb";
+  const modelUrl = searchParams.get("modelUrl") || DEMO_MODEL;
   const projectTitle = searchParams.get("title") || "Project";
 
   const mapContainerRef = useRef<HTMLDivElement>(null);
@@ -381,7 +383,7 @@ export default function OnsitePage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
           <div
-            className="card overflow-hidden bg-surface-overlay"
+            className="card overflow-hidden bg-surface-overlay relative"
             style={{ height: "600px" }}
           >
             {loading && (
@@ -399,6 +401,25 @@ export default function OnsitePage() {
 
             <div ref={mapContainerRef} className="w-full h-full" />
 
+            {!loading && progress < 100 && !error && (
+              <div className="absolute bottom-0 left-0 right-0 bg-black/50 px-4 py-2">
+                <div className="flex items-center gap-3">
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  <span className="text-xs text-white">
+                    Loading 3D model... {progress > 0 ? `${Math.round(progress)}%` : ""}
+                  </span>
+                </div>
+                {progress > 0 && (
+                  <div className="mt-1 h-1 bg-white/20 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-accent rounded-full transition-all"
+                      style={{ width: `${progress}%` }}
+                    />
+                  </div>
+                )}
+              </div>
+            )}
+
             {mapInstance && modelUrl && (
               <>
                 <OnSiteCanvasWithLights
@@ -411,6 +432,7 @@ export default function OnsitePage() {
                   enableSun={true}
                   onProgress={setProgress}
                   onError={setError}
+                  onLoaded={() => setProgress(100)}
                 />
                 {state.ghostAnchor && (
                   <DraggableGhost
