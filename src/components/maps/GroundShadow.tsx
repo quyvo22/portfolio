@@ -35,7 +35,8 @@ export function createGroundShadow(config: GroundShadowConfig = {}): THREE.Mesh 
     transparent: true,
     opacity: 1,
     depthWrite: false,
-    blending: THREE.MultiplyBlending,
+    blending: THREE.NormalBlending,
+    premultipliedAlpha: true,
   });
 
   const mesh = new THREE.Mesh(geometry, material);

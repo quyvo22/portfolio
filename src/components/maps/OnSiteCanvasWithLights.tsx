@@ -189,7 +189,25 @@ export function OnSiteCanvasWithLights({
           antialias: true,
         });
         renderer.autoClear = false;
+        renderer.shadowMap.enabled = !profileRef.current.lowEnd;
+        renderer.shadowMap.type = profileRef.current.lowEnd
+          ? THREE.BasicShadowMap
+          : THREE.PCFSoftShadowMap;
         rendererRef.current = renderer;
+
+        // Handle WebGL context loss/restore gracefully
+        const canvas = _map.getCanvas();
+        canvas.addEventListener("webglcontextlost", (e) => {
+          e.preventDefault();
+          console.warn("WebGL context lost — pausing Three.js rendering");
+          rendererRef.current = null;
+        });
+        canvas.addEventListener("webglcontextrestored", () => {
+          console.info("WebGL context restored");
+          needsRenderRef.current = true;
+          _map.triggerRepaint();
+        });
+
         loadModel();
       },
 
