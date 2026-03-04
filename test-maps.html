@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Google Maps API Key Test</title>
+  <style>
+    #map { height: 500px; width: 100%; }
+    body { font-family: Arial, sans-serif; padding: 20px; }
+    #status { padding: 10px; margin-bottom: 10px; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <h2>Google Maps API Key Test</h2>
+  <div id="status">Loading...</div>
+  <div id="map"></div>
+
+  <script>
+    function initMap() {
+      document.getElementById('status').textContent = 'Map loaded successfully!';
+      document.getElementById('status').style.color = 'green';
+      new google.maps.Map(document.getElementById('map'), {
+        center: { lat: 21.0285, lng: 105.8542 },
+        zoom: 14,
+      });
+    }
+
+    window.gm_authFailure = function() {
+      document.getElementById('status').textContent = 'API Key FAILED - Permission Denied or invalid key';
+      document.getElementById('status').style.color = 'red';
+    };
+  </script>
+  <script
+    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyC8sYnddMMAtA8qvFMNRachnsa5lTDDgBc&callback=initMap"
+    async defer
+  ></script>
+</body>
+</html>
