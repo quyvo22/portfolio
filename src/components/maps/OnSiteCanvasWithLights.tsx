@@ -54,6 +54,7 @@ export function OnSiteCanvasWithLights({
   const modelUrlRef = useRef(modelUrl);
   const callbacksRef = useRef({ onProgress, onError, onLoaded });
   const modelLoadedRef = useRef(false);
+  const needsRenderRef = useRef(true); // always render at least once on init
 
   // Keep refs in sync with latest props (no re-renders, no effect re-runs)
   useEffect(() => { placementRef.current = placement; }, [placement]);
@@ -65,6 +66,7 @@ export function OnSiteCanvasWithLights({
 
   // Helper: trigger repaint respecting FPS cap
   const triggerRepaint = () => {
+    needsRenderRef.current = true;
     const profile = profileRef.current;
     if (profile.fpsCap) {
       if (frameTimerRef.current) return;
@@ -163,6 +165,7 @@ export function OnSiteCanvasWithLights({
         modelRef.current = model;
         sceneRef.current.add(model);
         modelLoadedRef.current = true;
+        needsRenderRef.current = true;
         callbacksRef.current.onLoaded?.();
         map.triggerRepaint();
       } catch (err) {
@@ -192,13 +195,14 @@ export function OnSiteCanvasWithLights({
 
       render(_gl, matrix) {
         const prof = profileRef.current;
-        if (prof.lazyRender && shouldLazyRender(
+        if (prof.lazyRender && !needsRenderRef.current && shouldLazyRender(
           lastRenderRef.current,
           1000,
           isInteractingRef.current
         )) {
           return;
         }
+        needsRenderRef.current = false;
         lastRenderRef.current = Date.now();
 
         const curr = placementRef.current;

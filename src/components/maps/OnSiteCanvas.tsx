@@ -42,6 +42,7 @@ export function OnSiteCanvas({
   const profileRef = useRef(perfProfile || loadPerfProfile());
   const modelUrlRef = useRef(modelUrl);
   const callbacksRef = useRef({ onProgress, onError, onLoaded });
+  const needsRenderRef = useRef(true);
 
   // Keep refs in sync
   useEffect(() => { placementRef.current = placement; }, [placement]);
@@ -50,6 +51,7 @@ export function OnSiteCanvas({
   useEffect(() => { callbacksRef.current = { onProgress, onError, onLoaded }; }, [onProgress, onError, onLoaded]);
 
   const triggerRepaint = () => {
+    needsRenderRef.current = true;
     const profile = profileRef.current;
     if (profile.fpsCap) {
       if (frameTimerRef.current) return;
@@ -118,6 +120,7 @@ export function OnSiteCanvas({
 
         modelRef.current = model;
         sceneRef.current.add(model);
+        needsRenderRef.current = true;
         callbacksRef.current.onLoaded?.();
         map.triggerRepaint();
       } catch (err) {
@@ -146,13 +149,14 @@ export function OnSiteCanvas({
 
       render(_gl, matrix) {
         const prof = profileRef.current;
-        if (prof.lazyRender && shouldLazyRender(
+        if (prof.lazyRender && !needsRenderRef.current && shouldLazyRender(
           lastRenderRef.current,
           1000,
           isInteractingRef.current
         )) {
           return;
         }
+        needsRenderRef.current = false;
         lastRenderRef.current = Date.now();
 
         const p = placementRef.current;
