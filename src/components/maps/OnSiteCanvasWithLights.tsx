@@ -206,9 +206,14 @@ export function OnSiteCanvasWithLights({
         lastRenderRef.current = Date.now();
 
         const curr = placementRef.current;
+        // When terrain is active, query ground elevation so model sits on
+        // the terrain surface instead of at sea level.
+        const terrainElev = map.terrain
+          ? (map.queryTerrainElevation(new maplibregl.LngLat(curr.lng, curr.lat)) ?? 0)
+          : 0;
         const anchor = maplibregl.MercatorCoordinate.fromLngLat(
           [curr.lng, curr.lat],
-          curr.altitude
+          terrainElev + curr.altitude
         );
 
         const s = anchor.meterInMercatorCoordinateUnits();
