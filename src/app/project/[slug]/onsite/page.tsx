@@ -386,20 +386,20 @@ export default function OnsitePage() {
             className="card overflow-hidden bg-surface-overlay relative"
             style={{ height: "600px" }}
           >
+            <div ref={mapContainerRef} className="absolute inset-0 w-full h-full" />
+
             {loading && (
-              <div className="h-full flex flex-col items-center justify-center gap-3">
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-surface-overlay z-10">
                 <div className="w-8 h-8 border-4 border-accent border-t-transparent rounded-full animate-spin" />
                 <p className="text-sm text-ink-muted">Loading map...</p>
               </div>
             )}
 
             {error && (
-              <div className="h-full flex flex-col items-center justify-center gap-3 text-red-500">
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-red-500 bg-surface-overlay z-10">
                 <p className="text-sm">{error}</p>
               </div>
             )}
-
-            <div ref={mapContainerRef} className="w-full h-full" />
 
             {!loading && progress < 100 && !error && (
               <div className="absolute bottom-0 left-0 right-0 bg-black/50 px-4 py-2">
