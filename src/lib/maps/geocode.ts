@@ -19,6 +19,9 @@ export async function geocodeAddress(
   });
 
   if (!res.ok) {
+    if (res.status === 429) {
+      throw new Error("Geocode rate limited (429). Please wait and try again.");
+    }
     throw new Error(`Geocode failed: HTTP ${res.status}`);
   }
 

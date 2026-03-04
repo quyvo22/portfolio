@@ -5,6 +5,10 @@ import maplibregl from "maplibre-gl";
 import { Pentagon, Target, Trash2 } from "lucide-react";
 import type { LotPolygon, Coords } from "@/lib/onsite/types";
 import { computeCentroid } from "@/lib/onsite/state";
+import {
+  createLotEditController,
+  type LotEditController,
+} from "@/lib/maps/lotEdit";
 
 const SOURCE_ID = "lot-polygon-source";
 const FILL_LAYER_ID = "lot-polygon-fill";
@@ -15,6 +19,7 @@ interface LotEditorProps {
   polygon: LotPolygon | null;
   onChange: (polygon: LotPolygon | null) => void;
   onSnapToCentroid?: () => void;
+  onExitMode?: () => void;
   active: boolean;
 }
 
@@ -33,10 +38,12 @@ export function LotEditor({
   polygon,
   onChange,
   onSnapToCentroid,
+  onExitMode,
   active,
 }: LotEditorProps) {
   const [editing, setEditing] = useState(false);
   const vertexMarkersRef = useRef<maplibregl.Marker[]>([]);
+  const controllerRef = useRef<LotEditController | null>(null);
 
   const clearVertexMarkers = useCallback(() => {
     vertexMarkersRef.current.forEach((m) => m.remove());
@@ -45,7 +52,9 @@ export function LotEditor({
 
   const updateSource = useCallback(
     (path: Coords[] | null) => {
-      const source = map.getSource(SOURCE_ID) as maplibregl.GeoJSONSource | undefined;
+      const source = map.getSource(SOURCE_ID) as
+        | maplibregl.GeoJSONSource
+        | undefined;
       if (!source) return;
 
       if (!path || path.length < 3) {
@@ -75,12 +84,20 @@ export function LotEditor({
           .setLngLat([coord.lng, coord.lat])
           .addTo(map);
 
+        marker.on("dragstart", () => {
+          controllerRef.current?.onVertexDragStart();
+        });
+
         marker.on("dragend", () => {
+          controllerRef.current?.onVertexDragEnd();
           const lngLat = marker.getLngLat();
           const newPath = [...path];
           newPath[i] = { lat: lngLat.lat, lng: lngLat.lng };
           updateSource(newPath);
-          onChange({ path: newPath, centroid: computeCentroid(newPath) ?? undefined });
+          onChange({
+            path: newPath,
+            centroid: computeCentroid(newPath) ?? undefined,
+          });
         });
 
         return marker;
@@ -90,6 +107,42 @@ export function LotEditor({
     },
     [map, editing, clearVertexMarkers, updateSource, onChange]
   );
+
+  // Lot edit controller lifecycle
+  useEffect(() => {
+    if (!active) {
+      controllerRef.current?.detach();
+      controllerRef.current = null;
+      return;
+    }
+
+    const controller = createLotEditController(map, {
+      onEscape: () => {
+        setEditing(false);
+        onExitMode?.();
+      },
+      onDeleteLastVertex: () => {
+        if (!polygon || polygon.path.length === 0) return;
+        const newPath = polygon.path.slice(0, -1);
+        if (newPath.length < 3) {
+          onChange(null);
+        } else {
+          onChange({
+            path: newPath,
+            centroid: computeCentroid(newPath) ?? undefined,
+          });
+        }
+      },
+    });
+
+    controller.attach();
+    controllerRef.current = controller;
+
+    return () => {
+      controller.detach();
+      controllerRef.current = null;
+    };
+  }, [active, map, polygon, onChange, onExitMode]);
 
   // Add/remove source and layers
   useEffect(() => {
@@ -144,7 +197,14 @@ export function LotEditor({
       if (map.getLayer(LINE_LAYER_ID)) map.removeLayer(LINE_LAYER_ID);
       if (map.getSource(SOURCE_ID)) map.removeSource(SOURCE_ID);
     };
-  }, [active, map, polygon, updateSource, syncVertexMarkers, clearVertexMarkers]);
+  }, [
+    active,
+    map,
+    polygon,
+    updateSource,
+    syncVertexMarkers,
+    clearVertexMarkers,
+  ]);
 
   // Sync editing state with vertex markers
   useEffect(() => {

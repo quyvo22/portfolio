@@ -7,7 +7,7 @@ import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { ProjectTabs } from "@/components/project/ProjectTabs";
 import { loadMap } from "@/lib/maps/loader";
-import { OnSiteCanvas } from "@/components/maps/OnSiteCanvas";
+import { OnSiteCanvasWithLights } from "@/components/maps/OnSiteCanvasWithLights";
 import { AddressForm } from "@/components/maps/AddressForm";
 import { PlacementControls } from "@/components/maps/PlacementControls";
 import { LotEditor } from "@/components/maps/LotEditor";
@@ -26,7 +26,12 @@ import {
 } from "@/lib/onsite/state";
 import { loadPerfProfile, type PerfProfile } from "@/lib/onsite/perf";
 import { parsePermalink, type PermalinkState } from "@/lib/share/permalink";
-import type { OnsitePlacementState, GeocodeResult, Coords } from "@/lib/onsite/types";
+import { rafThrottle } from "@/lib/utils/rafThrottle";
+import type {
+  OnsitePlacementState,
+  GeocodeResult,
+  Coords,
+} from "@/lib/onsite/types";
 import { useParams, useSearchParams } from "next/navigation";
 import { emit } from "@/lib/telemetry";
 
@@ -43,15 +48,25 @@ export default function OnsitePage() {
   const [error, setError] = useState<string | null>(null);
   const [progress, setProgress] = useState(0);
 
-  const [state, setState] = useState<OnsitePlacementState>(() => loadPlacementState(slug));
-  const [perfProfile, setPerfProfile] = useState<PerfProfile>(loadPerfProfile());
+  const [state, setState] = useState<OnsitePlacementState>(() =>
+    loadPlacementState(slug)
+  );
+  const [perfProfile, setPerfProfile] = useState<PerfProfile>(
+    loadPerfProfile()
+  );
   const [sunState, setSunState] = useState<SunState>({
     date: new Date(),
     hour: 12,
   });
+  const [cameraCoords, setCameraCoords] = useState<{
+    lat: number;
+    lng: number;
+    zoom: number;
+  } | null>(null);
 
   const placement = state.placement || DEFAULT_PLACEMENT;
 
+  // --- Permalink restore ---
   useEffect(() => {
     if (typeof window === "undefined") return;
     const parsed = parsePermalink(window.location.href);
@@ -71,7 +86,10 @@ export default function OnsitePage() {
         setSunState((prev) => ({ ...prev, hour: parsed.time! }));
       }
       if (parsed.date) {
-        setSunState((prev) => ({ ...prev, date: new Date(parsed.date! + "T12:00:00") }));
+        setSunState((prev) => ({
+          ...prev,
+          date: new Date(parsed.date! + "T12:00:00"),
+        }));
       }
       if (parsed.lowEnd !== undefined) {
         setPerfProfile((prev) => ({ ...prev, lowEnd: parsed.lowEnd! }));
@@ -79,10 +97,12 @@ export default function OnsitePage() {
     }
   }, []);
 
+  // --- Persist state ---
   useEffect(() => {
     savePlacementState(slug, state);
   }, [slug, state]);
 
+  // --- Map init ---
   useEffect(() => {
     const container = mapContainerRef.current;
     if (!container) return;
@@ -111,11 +131,65 @@ export default function OnsitePage() {
         map.remove();
       };
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to initialize map");
+      setError(
+        err instanceof Error ? err.message : "Failed to initialize map"
+      );
       setLoading(false);
     }
   }, []);
 
+  // --- A) Mode engine: lock/unlock map interactions ---
+  useEffect(() => {
+    if (!mapInstance) return;
+
+    if (state.mode === "confirm") {
+      mapInstance.dragPan.disable();
+      mapInstance.scrollZoom.disable();
+      mapInstance.dragRotate.disable();
+    } else {
+      mapInstance.dragPan.enable();
+      mapInstance.scrollZoom.enable();
+      mapInstance.dragRotate.enable();
+    }
+  }, [state.mode, mapInstance]);
+
+  // --- B) lowEnd perf → map pitch/bearing ---
+  useEffect(() => {
+    if (!mapInstance) return;
+
+    if (perfProfile.lowEnd) {
+      mapInstance.easeTo({ pitch: 0, bearing: 0, duration: 300 });
+    } else {
+      mapInstance.easeTo({
+        pitch: MAP_CONFIG.pitch,
+        bearing: MAP_CONFIG.bearing,
+        duration: 300,
+      });
+    }
+  }, [perfProfile.lowEnd, mapInstance]);
+
+  // --- C) Live coordinate readout ---
+  useEffect(() => {
+    if (!mapInstance) return;
+
+    const throttled = rafThrottle(() => {
+      const center = mapInstance.getCenter();
+      setCameraCoords({
+        lat: center.lat,
+        lng: center.lng,
+        zoom: mapInstance.getZoom(),
+      });
+    });
+
+    mapInstance.on("move", throttled.call);
+
+    return () => {
+      mapInstance.off("move", throttled.call);
+      throttled.cancel();
+    };
+  }, [mapInstance]);
+
+  // --- Handlers ---
   const handleGeocodeResult = useCallback(
     async (result: GeocodeResult) => {
       if (!mapInstance) return;
@@ -123,6 +197,7 @@ export default function OnsitePage() {
       mapInstance.flyTo({
         center: [result.coords.lng, result.coords.lat],
         zoom: MAP_CONFIG.zoom,
+        essential: true,
       });
 
       try {
@@ -136,7 +211,7 @@ export default function OnsitePage() {
             altitude: elevResult.elevation,
           }),
         }));
-      } catch (e) {
+      } catch {
         setState((prev) => ({
           ...prev,
           ghostAnchor: result.coords,
@@ -150,12 +225,15 @@ export default function OnsitePage() {
     [mapInstance]
   );
 
-  const handlePlacementChange = useCallback((updates: Partial<typeof placement>) => {
-    setState((prev) => ({
-      ...prev,
-      placement: updatePlacement(prev.placement, updates),
-    }));
-  }, []);
+  const handlePlacementChange = useCallback(
+    (updates: Partial<typeof placement>) => {
+      setState((prev) => ({
+        ...prev,
+        placement: updatePlacement(prev.placement, updates),
+      }));
+    },
+    []
+  );
 
   const handleReset = useCallback(() => {
     setState({
@@ -216,7 +294,7 @@ export default function OnsitePage() {
   }, []);
 
   const handleConfirm = useCallback(() => {
-    if (!state.ghostAnchor) return;
+    if (!state.ghostAnchor || state.mode === "confirm") return;
     setState((prev) => ({
       ...prev,
       placement: updatePlacement(prev.placement, {
@@ -229,7 +307,7 @@ export default function OnsitePage() {
       lat: state.ghostAnchor.lat,
       lng: state.ghostAnchor.lng,
     });
-  }, [state.ghostAnchor]);
+  }, [state.ghostAnchor, state.mode]);
 
   const setMode = useCallback((mode: OnsitePlacementState["mode"]) => {
     setState((prev) => ({ ...prev, mode }));
@@ -269,11 +347,18 @@ export default function OnsitePage() {
         <p className="text-ink-muted text-sm">On-Site Placement</p>
       </div>
 
-      <ProjectTabs slug={slug} modelUrl={modelUrl} projectTitle={projectTitle} />
+      <ProjectTabs
+        slug={slug}
+        modelUrl={modelUrl}
+        projectTitle={projectTitle}
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
-          <div className="card overflow-hidden bg-surface-overlay" style={{ height: "600px" }}>
+          <div
+            className="card overflow-hidden bg-surface-overlay"
+            style={{ height: "600px" }}
+          >
             {loading && (
               <div className="h-full flex flex-col items-center justify-center gap-3">
                 <div className="w-8 h-8 border-4 border-accent border-t-transparent rounded-full animate-spin" />
@@ -291,12 +376,14 @@ export default function OnsitePage() {
 
             {mapInstance && modelUrl && (
               <>
-                <OnSiteCanvas
+                <OnSiteCanvasWithLights
                   map={mapInstance}
                   modelUrl={modelUrl}
                   placement={placement}
                   ghostAnchor={state.ghostAnchor}
                   perfProfile={perfProfile}
+                  sunState={sunState}
+                  enableSun={true}
                   onProgress={setProgress}
                   onError={setError}
                 />
@@ -382,6 +469,7 @@ export default function OnsitePage() {
                 polygon={state.polygon}
                 onChange={handlePolygonChange}
                 onSnapToCentroid={handleSnapToCentroid}
+                onExitMode={() => setMode("place")}
                 active={state.mode === "edit-lot"}
               />
             </div>
@@ -389,18 +477,27 @@ export default function OnsitePage() {
 
           <PerfPanel onChange={setPerfProfile} />
 
-          <SunControls
-            onChange={setSunState}
-            initialState={sunState}
-          />
+          <SunControls onChange={setSunState} initialState={sunState} />
 
           <div className="card p-4">
-            <h3 className="text-sm font-semibold mb-3 text-ink-muted">Coordinates</h3>
+            <h3 className="text-sm font-semibold mb-3 text-ink-muted">
+              Coordinates
+            </h3>
             <div className="space-y-1 text-xs text-ink-faint font-mono">
-              <div>Lat: {placement.lat.toFixed(6)}</div>
-              <div>Lng: {placement.lng.toFixed(6)}</div>
+              <div>Model Lat: {placement.lat.toFixed(6)}</div>
+              <div>Model Lng: {placement.lng.toFixed(6)}</div>
               <div>Alt: {placement.altitude.toFixed(1)}m</div>
-              <div>Heading: {placement.heading}°</div>
+              <div>Heading: {placement.heading}&deg;</div>
+              {cameraCoords && (
+                <>
+                  <div className="mt-2 pt-2 border-t border-border">
+                    Camera:
+                  </div>
+                  <div>Lat: {cameraCoords.lat.toFixed(6)}</div>
+                  <div>Lng: {cameraCoords.lng.toFixed(6)}</div>
+                  <div>Zoom: {cameraCoords.zoom.toFixed(1)}</div>
+                </>
+              )}
             </div>
           </div>
         </div>

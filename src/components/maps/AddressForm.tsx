@@ -2,8 +2,7 @@
 
 import { useState, useCallback, useRef, useEffect } from "react";
 import { Search, MapPin, AlertCircle } from "lucide-react";
-import { geocodeAddress } from "@/lib/maps/geocode";
-import { cachedGeocode, COST_GUARD } from "@/lib/maps/cost";
+import { createSearch } from "@/lib/maps/search";
 import type { GeocodeResult } from "@/lib/onsite/types";
 
 interface AddressFormProps {
@@ -16,7 +15,7 @@ export function AddressForm({ onResult, className }: AddressFormProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastResult, setLastResult] = useState<string | null>(null);
-  const debounceRef = useRef<NodeJS.Timeout>();
+  const searchRef = useRef(createSearch());
 
   const handleSearch = useCallback(async () => {
     if (!address.trim()) {
@@ -28,10 +27,7 @@ export function AddressForm({ onResult, className }: AddressFormProps) {
     setError(null);
 
     try {
-      const result = await cachedGeocode(
-        address.trim(),
-        (addr) => geocodeAddress(addr)
-      );
+      const result = await searchRef.current.search(address.trim());
       setLastResult(result.formatted);
       onResult(result);
     } catch (err) {
@@ -44,10 +40,6 @@ export function AddressForm({ onResult, className }: AddressFormProps) {
   const handleChange = useCallback((value: string) => {
     setAddress(value);
     setError(null);
-
-    if (debounceRef.current) {
-      clearTimeout(debounceRef.current);
-    }
   }, []);
 
   const handleKeyDown = useCallback(
@@ -62,9 +54,7 @@ export function AddressForm({ onResult, className }: AddressFormProps) {
 
   useEffect(() => {
     return () => {
-      if (debounceRef.current) {
-        clearTimeout(debounceRef.current);
-      }
+      searchRef.current.cancel();
     };
   }, []);
 
