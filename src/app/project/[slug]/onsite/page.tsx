@@ -119,6 +119,14 @@ export default function OnsitePage() {
       map.on("load", () => {
         setMapInstance(map);
         setLoading(false);
+        // Show ghost marker at initial placement so user can drag immediately
+        setState((prev) => ({
+          ...prev,
+          ghostAnchor: prev.ghostAnchor ?? {
+            lat: (prev.placement || DEFAULT_PLACEMENT).lat,
+            lng: (prev.placement || DEFAULT_PLACEMENT).lng,
+          },
+        }));
       });
 
       map.on("error", (e) => {
