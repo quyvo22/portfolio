@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef } from "react";
 import maplibregl, { type CustomLayerInterface } from "maplibre-gl";
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
@@ -44,72 +44,30 @@ export function OnSiteCanvasWithLights({
   const modelRef = useRef<THREE.Object3D | null>(null);
   const lightsRef = useRef<THREE.Light[]>([]);
   const groundShadowRef = useRef<THREE.Mesh | null>(null);
-  const [loading, setLoading] = useState(true);
   const lastRenderRef = useRef(Date.now());
   const isInteractingRef = useRef(false);
   const frameTimerRef = useRef<number | null>(null);
   const placementRef = useRef(placement);
-  const profile = perfProfile || loadPerfProfile();
+  const profileRef = useRef(perfProfile || loadPerfProfile());
+  const sunStateRef = useRef(sunState);
+  const enableSunRef = useRef(enableSun);
+  const modelUrlRef = useRef(modelUrl);
+  const callbacksRef = useRef({ onProgress, onError, onLoaded });
+  const modelLoadedRef = useRef(false);
 
-  useEffect(() => {
-    placementRef.current = placement;
-  }, [placement]);
+  // Keep refs in sync with latest props (no re-renders, no effect re-runs)
+  useEffect(() => { placementRef.current = placement; }, [placement]);
+  useEffect(() => { profileRef.current = perfProfile || loadPerfProfile(); }, [perfProfile]);
+  useEffect(() => { sunStateRef.current = sunState; }, [sunState]);
+  useEffect(() => { enableSunRef.current = enableSun; }, [enableSun]);
+  useEffect(() => { modelUrlRef.current = modelUrl; }, [modelUrl]);
+  useEffect(() => { callbacksRef.current = { onProgress, onError, onLoaded }; }, [onProgress, onError, onLoaded]);
 
-  const loadModel = useCallback(async () => {
-    if (!modelUrl || !sceneRef.current) return;
-
-    setLoading(true);
-    const loader = new GLTFLoader();
-
-    try {
-      const gltf = await new Promise<any>((resolve, reject) => {
-        loader.load(
-          modelUrl,
-          resolve,
-          (xhr) => {
-            const progress = xhr.total ? (xhr.loaded / xhr.total) * 100 : 0;
-            onProgress?.(progress);
-          },
-          reject
-        );
-      });
-
-      if (modelRef.current && sceneRef.current) {
-        sceneRef.current.remove(modelRef.current);
-      }
-
-      const model = gltf.scene;
-      model.scale.setScalar(placement.scale);
-      model.rotation.y = THREE.MathUtils.degToRad(placement.heading);
-
-      model.traverse((child: THREE.Object3D) => {
-        if ((child as THREE.Mesh).isMesh) {
-          child.castShadow = !profile.lowEnd;
-          child.receiveShadow = !profile.lowEnd;
-        }
-      });
-
-      const box = new THREE.Box3().setFromObject(model);
-      const center = box.getCenter(new THREE.Vector3());
-      model.position.set(-center.x, -box.min.y, -center.z);
-
-      modelRef.current = model;
-      sceneRef.current.add(model);
-
-      setLoading(false);
-      onLoaded?.();
-      map.triggerRepaint();
-    } catch (error) {
-      console.error("Model load error:", error);
-      onError?.(error instanceof Error ? error.message : "Failed to load model");
-      setLoading(false);
-    }
-  }, [modelUrl, placement.scale, placement.heading, onProgress, onError, onLoaded, profile.lowEnd, map]);
-
-  const scheduleRender = useCallback(() => {
+  // Helper: trigger repaint respecting FPS cap
+  const triggerRepaint = () => {
+    const profile = profileRef.current;
     if (profile.fpsCap) {
       if (frameTimerRef.current) return;
-
       frameTimerRef.current = window.setTimeout(() => {
         map.triggerRepaint();
         frameTimerRef.current = null;
@@ -119,20 +77,26 @@ export function OnSiteCanvasWithLights({
       map.triggerRepaint();
       lastRenderRef.current = Date.now();
     }
-  }, [profile.fpsCap, map]);
+  };
 
+  // === MAIN EFFECT: create scene + layer ONCE, load model ONCE ===
   useEffect(() => {
     if (!map) return;
 
     const scene = new THREE.Scene();
     sceneRef.current = scene;
 
-    if (enableSun && sunState) {
+    // Setup lights
+    const profile = profileRef.current;
+    const p = placementRef.current;
+    const sun = sunStateRef.current;
+
+    if (enableSun && sun) {
       const lights = createLights({
-        lat: placement.lat,
-        lng: placement.lng,
-        date: sunState.date,
-        hour: sunState.hour,
+        lat: p.lat,
+        lng: p.lng,
+        date: sun.date,
+        hour: sun.hour,
         lowEnd: profile.lowEnd,
       });
       lights.forEach((light) => scene.add(light));
@@ -149,13 +113,67 @@ export function OnSiteCanvasWithLights({
       directionalLight.position.set(5, 10, 7.5);
       directionalLight.castShadow = !profile.lowEnd;
       if (directionalLight.castShadow) {
-        directionalLight.shadow.mapSize.width = profile.lowEnd ? 512 : 1024;
-        directionalLight.shadow.mapSize.height = profile.lowEnd ? 512 : 1024;
+        directionalLight.shadow.mapSize.width = 1024;
+        directionalLight.shadow.mapSize.height = 1024;
       }
       scene.add(directionalLight);
       lightsRef.current = [ambientLight, directionalLight];
     }
 
+    // Load model
+    const loadModel = async () => {
+      const url = modelUrlRef.current;
+      if (!url || !sceneRef.current) return;
+
+      const loader = new GLTFLoader();
+      try {
+        const gltf = await new Promise<any>((resolve, reject) => {
+          loader.load(
+            url,
+            resolve,
+            (xhr) => {
+              const pct = xhr.total ? (xhr.loaded / xhr.total) * 100 : 0;
+              callbacksRef.current.onProgress?.(pct);
+            },
+            reject
+          );
+        });
+
+        if (modelRef.current && sceneRef.current) {
+          sceneRef.current.remove(modelRef.current);
+        }
+
+        const model = gltf.scene;
+        const currentPlacement = placementRef.current;
+        const currentProfile = profileRef.current;
+        model.scale.setScalar(currentPlacement.scale);
+        model.rotation.y = THREE.MathUtils.degToRad(currentPlacement.heading);
+
+        model.traverse((child: THREE.Object3D) => {
+          if ((child as THREE.Mesh).isMesh) {
+            child.castShadow = !currentProfile.lowEnd;
+            child.receiveShadow = !currentProfile.lowEnd;
+          }
+        });
+
+        const box = new THREE.Box3().setFromObject(model);
+        const center = box.getCenter(new THREE.Vector3());
+        model.position.set(-center.x, -box.min.y, -center.z);
+
+        modelRef.current = model;
+        sceneRef.current.add(model);
+        modelLoadedRef.current = true;
+        callbacksRef.current.onLoaded?.();
+        map.triggerRepaint();
+      } catch (err) {
+        console.error("Model load error:", err);
+        callbacksRef.current.onError?.(
+          err instanceof Error ? err.message : "Failed to load model"
+        );
+      }
+    };
+
+    // Custom layer
     const customLayer: CustomLayerInterface = {
       id: LAYER_ID,
       type: "custom",
@@ -169,12 +187,12 @@ export function OnSiteCanvasWithLights({
         });
         renderer.autoClear = false;
         rendererRef.current = renderer;
-
         loadModel();
       },
 
       render(_gl, matrix) {
-        if (profile.lazyRender && shouldLazyRender(
+        const prof = profileRef.current;
+        if (prof.lazyRender && shouldLazyRender(
           lastRenderRef.current,
           1000,
           isInteractingRef.current
@@ -183,17 +201,16 @@ export function OnSiteCanvasWithLights({
         }
         lastRenderRef.current = Date.now();
 
-        const p = placementRef.current;
+        const curr = placementRef.current;
         const anchor = maplibregl.MercatorCoordinate.fromLngLat(
-          [p.lng, p.lat],
-          p.altitude
+          [curr.lng, curr.lat],
+          curr.altitude
         );
 
-        const scale = anchor.meterInMercatorCoordinateUnits();
-
+        const s = anchor.meterInMercatorCoordinateUnits();
         const m = new THREE.Matrix4()
           .makeTranslation(anchor.x, anchor.y, anchor.z ?? 0)
-          .scale(new THREE.Vector3(scale, -scale, scale));
+          .scale(new THREE.Vector3(s, -s, s));
 
         cameraRef.current.projectionMatrix = new THREE.Matrix4()
           .fromArray(matrix as unknown as number[])
@@ -215,7 +232,6 @@ export function OnSiteCanvasWithLights({
       isInteractingRef.current = true;
       emit("map_camera_sync", { action: "start" });
     };
-
     const handleInteractionEnd = () => {
       isInteractingRef.current = false;
       emit("map_camera_sync", { action: "end" });
@@ -238,41 +254,46 @@ export function OnSiteCanvasWithLights({
       if (sceneRef.current && modelRef.current) {
         sceneRef.current.remove(modelRef.current);
       }
+      modelLoadedRef.current = false;
       rendererRef.current = null;
     };
-  }, [map, loadModel, profile.lowEnd, profile.lazyRender, scheduleRender, enableSun, sunState, placement.lat, placement.lng]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [map, enableSun]);
 
+  // === Sun updates (no layer recreation) ===
   useEffect(() => {
-    if (enableSun && sunState && lightsRef.current.length > 0 && sceneRef.current) {
-      const directional = lightsRef.current.find(
-        (l) => l instanceof THREE.DirectionalLight
-      ) as THREE.DirectionalLight | undefined;
+    if (!enableSun || !sunState || lightsRef.current.length === 0) return;
 
-      if (directional) {
-        updateDirectionalLight(directional, {
-          lat: placement.lat,
-          lng: placement.lng,
-          date: sunState.date,
-          hour: sunState.hour,
-          lowEnd: profile.lowEnd,
-        });
-        scheduleRender();
-      }
+    const directional = lightsRef.current.find(
+      (l) => l instanceof THREE.DirectionalLight
+    ) as THREE.DirectionalLight | undefined;
+
+    if (directional) {
+      updateDirectionalLight(directional, {
+        lat: placement.lat,
+        lng: placement.lng,
+        date: sunState.date,
+        hour: sunState.hour,
+        lowEnd: (perfProfile || profileRef.current).lowEnd,
+      });
+      triggerRepaint();
     }
-  }, [enableSun, sunState, placement.lat, placement.lng, profile.lowEnd, scheduleRender]);
+  }, [enableSun, sunState, placement.lat, placement.lng, perfProfile]);
 
+  // === Scale / heading updates (no layer recreation) ===
   useEffect(() => {
     if (modelRef.current) {
       modelRef.current.scale.setScalar(placement.scale);
       modelRef.current.rotation.y = THREE.MathUtils.degToRad(placement.heading);
       emit("model_interaction", { scale: placement.scale, heading: placement.heading });
-      scheduleRender();
+      triggerRepaint();
     }
-  }, [placement.scale, placement.heading, scheduleRender]);
+  }, [placement.scale, placement.heading]);
 
+  // === Position updates (just repaint, render() reads ref) ===
   useEffect(() => {
-    scheduleRender();
-  }, [placement.lat, placement.lng, placement.altitude, scheduleRender]);
+    triggerRepaint();
+  }, [placement.lat, placement.lng, placement.altitude]);
 
   return null;
 }
