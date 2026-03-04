@@ -16,14 +16,23 @@ export interface MapsLoaderResult {
 export function loadMap(): MapsLoaderResult {
   return {
     createMap: (container, options) => {
-      return new maplibregl.Map({
+      const map = new maplibregl.Map({
         container,
         style: MAP_CONFIG.style,
         center: [options.center.lng, options.center.lat],
         zoom: options.zoom ?? MAP_CONFIG.zoom,
         pitch: options.pitch ?? MAP_CONFIG.pitch,
         bearing: options.bearing ?? MAP_CONFIG.bearing,
+        maxPitch: 85,
       });
+
+      map.on("load", () => {
+        if (map.getSource("terrain-dem")) {
+          map.setTerrain({ source: "terrain-dem", exaggeration: 1.5 });
+        }
+      });
+
+      return map;
     },
   };
 }
