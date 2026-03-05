@@ -98,7 +98,7 @@ export function MapViewer({ modelUrl }: MapViewerProps) {
             lng: 108.2208,
             lat: 16.0678,
             altitude: 0,
-            scale: 1,
+            scale: 50,
             heading: 0,
           };
           await ctrl.addModel(inst);
@@ -180,7 +180,7 @@ export function MapViewer({ modelUrl }: MapViewerProps) {
           lng: 108.2208 + (models.length * 0.0003),
           lat: 16.0678,
           altitude: 0,
-          scale: 1,
+          scale: 50,
           heading: 0,
         };
         await ctrl.addModel(inst);

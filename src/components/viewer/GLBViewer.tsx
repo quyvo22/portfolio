@@ -16,6 +16,7 @@ export function GLBViewer({ url }: GLBViewerProps) {
   const [showMap, setShowMap] = useState(false);
   const [mapReady, setMapReady] = useState(false);
   const [coords, setCoords] = useState({ lng: 108.2208, lat: 16.0678 });
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!showMap) return;
@@ -37,7 +38,7 @@ export function GLBViewer({ url }: GLBViewerProps) {
           lng: 108.2208,
           lat: 16.0678,
           altitude: 0,
-          scale: 1,
+          scale: 50,
           heading: 0,
         };
         await ctrl.addModel(inst);
@@ -54,6 +55,7 @@ export function GLBViewer({ url }: GLBViewerProps) {
       })
       .catch((err) => {
         console.error("GLBViewer map init failed:", err);
+        setError(String(err));
       });
 
     return () => {
@@ -92,12 +94,18 @@ export function GLBViewer({ url }: GLBViewerProps) {
       >
         <div ref={mapContainerRef} className="absolute inset-0" />
 
-        {showMap && !mapReady && (
+        {showMap && !mapReady && !error && (
           <div className="absolute inset-0 flex items-center justify-center bg-surface-overlay z-10">
             <div className="flex items-center gap-2 text-sm text-ink-muted">
               <div className="w-4 h-4 border-2 border-accent border-t-transparent rounded-full animate-spin" />
               Loading map...
             </div>
+          </div>
+        )}
+
+        {showMap && error && (
+          <div className="absolute inset-0 flex items-center justify-center bg-surface-overlay z-10">
+            <p className="text-sm text-red-500">{error}</p>
           </div>
         )}
 
