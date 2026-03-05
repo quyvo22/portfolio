@@ -7,16 +7,13 @@ import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { ProjectTabs } from "@/components/project/ProjectTabs";
 import { loadMap } from "@/lib/maps/loader";
-import { OnSiteCanvasWithLights } from "@/components/maps/OnSiteCanvasWithLights";
+import { ThreeGLBLayer } from "@/lib/three/ThreeGLBLayer";
 import { AddressForm } from "@/components/maps/AddressForm";
 import { PlacementControls } from "@/components/maps/PlacementControls";
 import { LotEditor } from "@/components/maps/LotEditor";
 import { DraggableGhost } from "@/components/maps/DraggableGhost";
-import { PerfPanel } from "@/components/maps/PerfPanel";
-import { SunControls, type SunState } from "@/components/maps/SunControls";
 import { ShareBar } from "@/components/maps/ShareBar";
 import { UsageHints } from "@/components/maps/UsageHints";
-import { getElevation } from "@/lib/maps/elevation";
 import { DEFAULT_PLACEMENT, MAP_CONFIG } from "@/lib/onsite/config";
 import {
   loadPlacementState,
@@ -24,7 +21,6 @@ import {
   updatePlacement,
   setPolygon,
 } from "@/lib/onsite/state";
-import { loadPerfProfile, type PerfProfile } from "@/lib/onsite/perf";
 import { parsePermalink, type PermalinkState } from "@/lib/share/permalink";
 import { rafThrottle } from "@/lib/utils/rafThrottle";
 import type {
@@ -46,6 +42,7 @@ export default function OnsitePage() {
 
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const [mapInstance, setMapInstance] = useState<maplibregl.Map | null>(null);
+  const layerRef = useRef<ThreeGLBLayer | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [progress, setProgress] = useState(0);
@@ -53,13 +50,6 @@ export default function OnsitePage() {
   const [state, setState] = useState<OnsitePlacementState>(() =>
     loadPlacementState(slug)
   );
-  const [perfProfile, setPerfProfile] = useState<PerfProfile>(
-    loadPerfProfile()
-  );
-  const [sunState, setSunState] = useState<SunState>({
-    date: new Date(),
-    hour: 12,
-  });
   const [cameraCoords, setCameraCoords] = useState<{
     lat: number;
     lng: number;
@@ -84,18 +74,6 @@ export default function OnsitePage() {
         }),
         polygon: parsed.lotPolygon ?? prev.polygon,
       }));
-      if (parsed.time !== undefined) {
-        setSunState((prev) => ({ ...prev, hour: parsed.time! }));
-      }
-      if (parsed.date) {
-        setSunState((prev) => ({
-          ...prev,
-          date: new Date(parsed.date! + "T12:00:00"),
-        }));
-      }
-      if (parsed.lowEnd !== undefined) {
-        setPerfProfile((prev) => ({ ...prev, lowEnd: parsed.lowEnd! }));
-      }
     }
   }, []);
 
@@ -114,14 +92,27 @@ export default function OnsitePage() {
       const map = createMap(container, {
         center: { lat: placement.lat, lng: placement.lng },
         zoom: MAP_CONFIG.zoom,
-        pitch: perfProfile.lowEnd ? 0 : MAP_CONFIG.pitch,
-        bearing: perfProfile.lowEnd ? 0 : MAP_CONFIG.bearing,
       });
 
       map.on("load", () => {
         setMapInstance(map);
         setLoading(false);
-        // Show ghost marker at initial placement so user can drag immediately
+
+        // Create and add ThreeGLBLayer
+        const layer = new ThreeGLBLayer({
+          modelUrl,
+          lng: placement.lng,
+          lat: placement.lat,
+          heading: placement.heading,
+          scale: placement.scale,
+          onProgress: setProgress,
+          onError: setError,
+          onLoaded: () => setProgress(100),
+        });
+        map.addLayer(layer);
+        layerRef.current = layer;
+
+        // Show ghost marker at initial placement
         setState((prev) => ({
           ...prev,
           ghostAnchor: prev.ghostAnchor ?? {
@@ -138,6 +129,8 @@ export default function OnsitePage() {
       });
 
       return () => {
+        layerRef.current?.dispose();
+        layerRef.current = null;
         map.remove();
       };
     } catch (err) {
@@ -148,7 +141,7 @@ export default function OnsitePage() {
     }
   }, []);
 
-  // --- A) Mode engine: lock/unlock map interactions ---
+  // --- Mode engine: lock/unlock map interactions ---
   useEffect(() => {
     if (!mapInstance) return;
 
@@ -163,22 +156,7 @@ export default function OnsitePage() {
     }
   }, [state.mode, mapInstance]);
 
-  // --- B) lowEnd perf → map pitch/bearing ---
-  useEffect(() => {
-    if (!mapInstance) return;
-
-    if (perfProfile.lowEnd) {
-      mapInstance.easeTo({ pitch: 0, bearing: 0, duration: 300 });
-    } else {
-      mapInstance.easeTo({
-        pitch: MAP_CONFIG.pitch,
-        bearing: MAP_CONFIG.bearing,
-        duration: 300,
-      });
-    }
-  }, [perfProfile.lowEnd, mapInstance]);
-
-  // --- C) Live coordinate readout ---
+  // --- Live coordinate readout ---
   useEffect(() => {
     if (!mapInstance) return;
 
@@ -199,9 +177,19 @@ export default function OnsitePage() {
     };
   }, [mapInstance]);
 
+  // --- Sync placement to ThreeGLBLayer ---
+  useEffect(() => {
+    layerRef.current?.setTransform(
+      placement.lat,
+      placement.lng,
+      placement.heading,
+      placement.scale
+    );
+  }, [placement.lat, placement.lng, placement.heading, placement.scale]);
+
   // --- Handlers ---
   const handleGeocodeResult = useCallback(
-    async (result: GeocodeResult) => {
+    (result: GeocodeResult) => {
       if (!mapInstance) return;
 
       mapInstance.flyTo({
@@ -210,27 +198,14 @@ export default function OnsitePage() {
         essential: true,
       });
 
-      try {
-        const elevResult = await getElevation(result.coords);
-        setState((prev) => ({
-          ...prev,
-          ghostAnchor: result.coords,
-          placement: updatePlacement(prev.placement, {
-            lat: result.coords.lat,
-            lng: result.coords.lng,
-            altitude: elevResult.elevation,
-          }),
-        }));
-      } catch {
-        setState((prev) => ({
-          ...prev,
-          ghostAnchor: result.coords,
-          placement: updatePlacement(prev.placement, {
-            lat: result.coords.lat,
-            lng: result.coords.lng,
-          }),
-        }));
-      }
+      setState((prev) => ({
+        ...prev,
+        ghostAnchor: result.coords,
+        placement: updatePlacement(prev.placement, {
+          lat: result.coords.lat,
+          lng: result.coords.lng,
+        }),
+      }));
     },
     [mapInstance]
   );
@@ -252,7 +227,6 @@ export default function OnsitePage() {
       ghostAnchor: null,
       mode: "place",
     });
-    setSunState({ date: new Date(), hour: 12 });
     if (mapInstance) {
       mapInstance.flyTo({
         center: [DEFAULT_PLACEMENT.lng, DEFAULT_PLACEMENT.lat],
@@ -267,12 +241,9 @@ export default function OnsitePage() {
       alt: placement.altitude,
       heading: placement.heading,
       scale: placement.scale,
-      time: sunState.hour,
-      date: sunState.date.toISOString().split("T")[0],
-      lowEnd: perfProfile.lowEnd,
       lotPolygon: state.polygon ?? undefined,
     };
-  }, [placement, sunState, perfProfile, state.polygon]);
+  }, [placement, state.polygon]);
 
   const handlePolygonChange = useCallback((poly: any) => {
     setState((prev) => ({
@@ -325,7 +296,6 @@ export default function OnsitePage() {
 
   const setMode = useCallback((mode: OnsitePlacementState["mode"]) => {
     setState((prev) => {
-      // If switching to "place" and no ghost yet, drop one at map center
       if (mode === "place" && !prev.ghostAnchor && mapInstance) {
         const center = mapInstance.getCenter();
         const coords = { lat: center.lat, lng: center.lng };
@@ -366,7 +336,7 @@ export default function OnsitePage() {
         href="/portfolio"
         className="inline-flex items-center gap-1.5 text-sm text-ink-muted hover:text-ink transition-colors mb-8"
       >
-        <ArrowLeft size={14} /> Quay lại danh mục
+        <ArrowLeft size={14} /> Quay l&#7841;i danh m&#7909;c
       </Link>
 
       <div className="mb-6">
@@ -420,31 +390,15 @@ export default function OnsitePage() {
               </div>
             )}
 
-            {mapInstance && modelUrl && (
-              <>
-                <OnSiteCanvasWithLights
-                  map={mapInstance}
-                  modelUrl={modelUrl}
-                  placement={placement}
-                  ghostAnchor={state.ghostAnchor}
-                  perfProfile={perfProfile}
-                  sunState={sunState}
-                  enableSun={true}
-                  onProgress={setProgress}
-                  onError={setError}
-                  onLoaded={() => setProgress(100)}
-                />
-                {state.ghostAnchor && (
-                  <DraggableGhost
-                    map={mapInstance}
-                    position={state.ghostAnchor}
-                    polygon={state.polygon?.path || null}
-                    onPositionChange={handleGhostDrag}
-                    onConfirm={handleConfirm}
-                    draggable={state.mode === "place"}
-                  />
-                )}
-              </>
+            {mapInstance && state.ghostAnchor && (
+              <DraggableGhost
+                map={mapInstance}
+                position={state.ghostAnchor}
+                polygon={state.polygon?.path || null}
+                onPositionChange={handleGhostDrag}
+                onConfirm={handleConfirm}
+                draggable={state.mode === "place"}
+              />
             )}
           </div>
         </div>
@@ -521,10 +475,6 @@ export default function OnsitePage() {
               />
             </div>
           )}
-
-          <PerfPanel onChange={setPerfProfile} />
-
-          <SunControls onChange={setSunState} initialState={sunState} />
 
           <div className="card p-4">
             <h3 className="text-sm font-semibold mb-3 text-ink-muted">

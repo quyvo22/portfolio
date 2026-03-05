@@ -1,5 +1,3 @@
-export { OnSiteCanvas } from "./OnSiteCanvas";
-export { OnSiteCanvasWithLights } from "./OnSiteCanvasWithLights";
 export { AddressForm } from "./AddressForm";
 export { PlacementControls } from "./PlacementControls";
 export { LotEditor } from "./LotEditor";

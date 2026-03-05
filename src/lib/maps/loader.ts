@@ -21,15 +21,8 @@ export function loadMap(): MapsLoaderResult {
         style: MAP_CONFIG.style,
         center: [options.center.lng, options.center.lat],
         zoom: options.zoom ?? MAP_CONFIG.zoom,
-        pitch: options.pitch ?? MAP_CONFIG.pitch,
-        bearing: options.bearing ?? MAP_CONFIG.bearing,
-        maxPitch: 85,
-      });
-
-      map.on("load", () => {
-        if (map.getSource("terrain-dem")) {
-          map.setTerrain({ source: "terrain-dem", exaggeration: 1.5 });
-        }
+        pitch: 0,
+        bearing: 0,
       });
 
       return map;

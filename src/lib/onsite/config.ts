@@ -16,7 +16,7 @@ export const SCALE_MAX = 5;
 
 export const MAP_CONFIG = {
   zoom: 18,
-  pitch: 45,
+  pitch: 0,
   bearing: 0,
   style: {
     version: 8,
@@ -30,65 +30,12 @@ export const MAP_CONFIG = {
         attribution: "Tiles &copy; Esri",
         maxzoom: 19,
       },
-      "openmaptiles": {
-        type: "vector",
-        tiles: [
-          "https://tiles.openfreemap.org/planet/{z}/{x}/{y}.pbf",
-        ],
-        maxzoom: 14,
-      },
-      "terrain-dem": {
-        type: "raster-dem",
-        tiles: [
-          "https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png",
-        ],
-        encoding: "terrarium",
-        tileSize: 256,
-        maxzoom: 15,
-      },
-    },
-    terrain: {
-      source: "terrain-dem",
-      exaggeration: 1.5,
     },
     layers: [
       {
-        id: "esri-satellite-layer",
+        id: "satellite",
         type: "raster",
         source: "esri-satellite",
-        minzoom: 0,
-        maxzoom: 19,
-      },
-      {
-        id: "3d-buildings",
-        type: "fill-extrusion",
-        source: "openmaptiles",
-        "source-layer": "building",
-        minzoom: 14,
-        paint: {
-          "fill-extrusion-color": [
-            "interpolate",
-            ["linear"],
-            ["get", "render_height"],
-            0, "#e0e0e0",
-            50, "#c0c0c0",
-            100, "#a0a0a0",
-          ],
-          "fill-extrusion-height": [
-            "interpolate",
-            ["linear"],
-            ["zoom"],
-            14, 0,
-            14.5, ["get", "render_height"],
-          ],
-          "fill-extrusion-base": [
-            "case",
-            ["has", "render_min_height"],
-            ["get", "render_min_height"],
-            0,
-          ],
-          "fill-extrusion-opacity": 0.7,
-        },
       },
     ],
   } as StyleSpecification,
