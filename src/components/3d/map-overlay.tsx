@@ -1,11 +1,10 @@
 "use client";
 
-import { useEffect, useRef, useCallback, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { ThreeGLBLayer } from "@/lib/three/ThreeGLBLayer";
 import { MAP_CONFIG } from "@/lib/onsite/config";
-import { Move, Minus, Plus } from "lucide-react";
 
 interface MapOverlayProps {
   modelUrl: string;
@@ -18,101 +17,85 @@ export function MapOverlay({ modelUrl, lng = 108.2208, lat = 16.0678 }: MapOverl
   const mapRef = useRef<maplibregl.Map | null>(null);
   const layerRef = useRef<ThreeGLBLayer | null>(null);
   const [coords, setCoords] = useState({ lng, lat });
-  const [zoom, setZoom] = useState(MAP_CONFIG.zoom);
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
 
-    const map = new maplibregl.Map({
-      container: el,
-      style: MAP_CONFIG.style,
-      center: [coords.lng, coords.lat],
-      zoom,
-      pitch: 0,
-      bearing: 0,
-    });
-
-    map.on("load", () => {
-      mapRef.current = map;
-
-      const layer = new ThreeGLBLayer({
-        modelUrl,
-        lng: coords.lng,
-        lat: coords.lat,
-        debug: true,
+    // Small delay to ensure R3F Canvas is fully unmounted and GPU is free
+    const timer = setTimeout(() => {
+      const map = new maplibregl.Map({
+        container: el,
+        style: MAP_CONFIG.style,
+        center: [lng, lat],
+        zoom: MAP_CONFIG.zoom,
+        pitch: 0,
+        bearing: 0,
       });
 
-      map.addLayer(layer as maplibregl.AddLayerObject);
-      layerRef.current = layer;
-    });
+      map.on("load", () => {
+        mapRef.current = map;
+        setReady(true);
 
-    map.on("move", () => {
-      const center = map.getCenter();
-      setCoords({ lng: center.lng, lat: center.lat });
-      setZoom(map.getZoom());
-    });
+        const layer = new ThreeGLBLayer({
+          modelUrl,
+          lng,
+          lat,
+          debug: true,
+        });
+
+        map.addLayer(layer as maplibregl.AddLayerObject);
+        layerRef.current = layer;
+      });
+
+      map.on("move", () => {
+        const center = map.getCenter();
+        setCoords({ lng: center.lng, lat: center.lat });
+      });
+    }, 100);
 
     return () => {
+      clearTimeout(timer);
       layerRef.current?.dispose();
       layerRef.current = null;
-      mapRef.current = null;
-      map.remove();
+      if (mapRef.current) {
+        mapRef.current.remove();
+        mapRef.current = null;
+      }
+      setReady(false);
     };
-  }, [modelUrl]);
-
-  const handleZoomIn = useCallback(() => {
-    mapRef.current?.zoomIn();
-  }, []);
-
-  const handleZoomOut = useCallback(() => {
-    mapRef.current?.zoomOut();
-  }, []);
+  }, [modelUrl, lng, lat]);
 
   return (
-    <div className="absolute bottom-3 right-3 z-20 flex flex-col gap-1">
-      {/* Map container */}
-      <div
-        className="relative rounded-lg overflow-hidden border-2 border-border shadow-lg"
-        style={{ width: 320, height: 240 }}
-      >
-        <div ref={containerRef} className="absolute inset-0" />
+    <div className="absolute inset-0">
+      <div ref={containerRef} className="absolute inset-0" />
 
-        {/* Crosshair */}
-        <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
-          <div className="w-6 h-6 border-2 border-red-500 rounded-full opacity-50" />
-          <div className="absolute w-px h-4 bg-red-500 opacity-50" />
-          <div className="absolute w-4 h-px bg-red-500 opacity-50" />
+      {/* Loading state */}
+      {!ready && (
+        <div className="absolute inset-0 flex items-center justify-center bg-surface-overlay/80 z-10">
+          <div className="flex items-center gap-2 text-sm text-ink-muted">
+            <div className="w-4 h-4 border-2 border-accent border-t-transparent rounded-full animate-spin" />
+            Loading map...
+          </div>
         </div>
+      )}
 
-        {/* Drag hint */}
-        <div className="absolute top-1 left-1 bg-black/50 text-white text-[10px] px-1.5 py-0.5 rounded flex items-center gap-1">
-          <Move size={10} />
-          Drag map to align
-        </div>
-
-        {/* Coordinates */}
-        <div className="absolute bottom-1 left-1 bg-black/50 text-white text-[10px] px-1.5 py-0.5 rounded font-mono">
-          {coords.lat.toFixed(5)}, {coords.lng.toFixed(5)}
-        </div>
+      {/* Crosshair */}
+      <div className="absolute inset-0 pointer-events-none flex items-center justify-center z-10">
+        <div className="w-8 h-8 border-2 border-red-500 rounded-full opacity-40" />
+        <div className="absolute w-px h-6 bg-red-500 opacity-40" />
+        <div className="absolute w-6 h-px bg-red-500 opacity-40" />
       </div>
 
-      {/* Zoom controls */}
-      <div className="flex gap-1 self-end">
-        <button
-          onClick={handleZoomIn}
-          className="p-1 bg-surface border border-border rounded hover:bg-surface-overlay"
-          title="Zoom in"
-        >
-          <Plus size={14} />
-        </button>
-        <button
-          onClick={handleZoomOut}
-          className="p-1 bg-surface border border-border rounded hover:bg-surface-overlay"
-          title="Zoom out"
-        >
-          <Minus size={14} />
-        </button>
+      {/* Coordinates */}
+      <div className="absolute bottom-2 left-2 bg-black/60 text-white text-xs px-2 py-1 rounded font-mono z-10">
+        {coords.lat.toFixed(5)}, {coords.lng.toFixed(5)}
+      </div>
+
+      {/* Hint */}
+      <div className="absolute top-2 left-2 bg-black/60 text-white text-xs px-2 py-1 rounded z-10">
+        Drag map to align building to site
       </div>
     </div>
   );

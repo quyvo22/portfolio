@@ -276,8 +276,8 @@ export function ModelViewer({ url, poster }: ModelViewerProps) {
     return () => document.removeEventListener("mousedown", onClick);
   }, [sectionOpen]);
 
-  // Derived
-  const showCanvas = inView && !error;
+  // Derived — only one WebGL context at a time to prevent context loss
+  const showCanvas = inView && !error && !showMap;
   const isMobile = profile.isLowEnd;
   const dpr: [number, number] = profile.isLowEnd ? [1, 1] : [1, 1.5];
 
