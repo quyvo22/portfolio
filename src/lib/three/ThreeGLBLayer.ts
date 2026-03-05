@@ -9,6 +9,7 @@ export interface ThreeGLBLayerOptions {
   lat: number;
   heading?: number;
   scale?: number;
+  debug?: boolean;
   onProgress?: (pct: number) => void;
   onError?: (msg: string) => void;
   onLoaded?: () => void;
@@ -30,6 +31,7 @@ export class ThreeGLBLayer implements CustomLayerInterface {
   private heading: number;
   private modelScale: number;
   private modelUrl: string;
+  private debug: boolean;
 
   private onProgress?: (pct: number) => void;
   private onError?: (msg: string) => void;
@@ -42,32 +44,47 @@ export class ThreeGLBLayer implements CustomLayerInterface {
     this.heading = options.heading ?? 0;
     this.modelScale = options.scale ?? 1;
     this.modelUrl = options.modelUrl;
+    this.debug = options.debug ?? true;
     this.onProgress = options.onProgress;
     this.onError = options.onError;
     this.onLoaded = options.onLoaded;
   }
 
+  // --- STEP 7: shared WebGL context ---
   onAdd(map: maplibregl.Map, gl: WebGLRenderingContext | WebGL2RenderingContext) {
     this.map = map;
 
     this.renderer = new THREE.WebGLRenderer({
       canvas: map.getCanvas(),
       context: gl,
-      antialias: true,
     });
     this.renderer.autoClear = false;
 
-    // Lights
-    const ambient = new THREE.AmbientLight(0xffffff, 0.6);
+    // Simple lighting
+    const ambient = new THREE.AmbientLight(0xffffff, 0.8);
     this.scene.add(ambient);
 
-    const directional = new THREE.DirectionalLight(0xffffff, 0.8);
+    const directional = new THREE.DirectionalLight(0xffffff, 1.0);
     directional.position.set(5, 10, 7.5);
     this.scene.add(directional);
+
+    // --- STEP 8: debug red cube (20m) at anchor ---
+    if (this.debug) {
+      const debugCube = new THREE.Mesh(
+        new THREE.BoxGeometry(20, 20, 20),
+        new THREE.MeshBasicMaterial({ color: 0xff0000, wireframe: false, opacity: 0.6, transparent: true })
+      );
+      debugCube.position.set(0, 10, 0); // bottom at y=0
+      debugCube.name = "debug-cube";
+      this.scene.add(debugCube);
+      console.log("[ThreeGLBLayer] Debug: 20m red cube added at anchor");
+    }
 
     this.loadModel();
   }
 
+  // --- STEP 5: simplified rendering ---
+  // --- STEP 4: Mercator transform ---
   render(_gl: WebGLRenderingContext | WebGL2RenderingContext, args: CustomRenderMethodInput) {
     const anchor = maplibregl.MercatorCoordinate.fromLngLat(
       [this.lng, this.lat],
@@ -96,7 +113,6 @@ export class ThreeGLBLayer implements CustomLayerInterface {
     this.modelScale = scale;
 
     if (this.model) {
-      this.model.scale.setScalar(scale);
       this.model.rotation.y = THREE.MathUtils.degToRad(heading);
     }
 
@@ -129,22 +145,52 @@ export class ThreeGLBLayer implements CustomLayerInterface {
         );
       });
 
-      const model = gltf.scene;
-      model.scale.setScalar(this.modelScale);
+      const model = gltf.scene as THREE.Object3D;
+
+      // --- STEP 2: measure raw size, auto-detect Revit mm export ---
+      const rawBox = new THREE.Box3().setFromObject(model);
+      const rawSize = new THREE.Vector3();
+      rawBox.getSize(rawSize);
+
+      console.log("[ThreeGLBLayer] Raw model size:", {
+        x: rawSize.x.toFixed(2),
+        y: rawSize.y.toFixed(2),
+        z: rawSize.z.toFixed(2),
+      });
+
+      // Revit exports in millimeters — auto-convert to meters
+      if (rawSize.x > 1000 || rawSize.y > 1000 || rawSize.z > 1000) {
+        model.scale.setScalar(0.001);
+        console.log("[ThreeGLBLayer] Applied millimeter-to-meter scaling (0.001)");
+      }
+
+      // Apply user scale on top
+      if (this.modelScale !== 1) {
+        model.scale.multiplyScalar(this.modelScale);
+      }
+
+      // Apply heading
       model.rotation.y = THREE.MathUtils.degToRad(this.heading);
 
-      // Center model horizontally, place bottom at origin
+      // --- STEP 3: center model ---
+      // Recompute box after scaling
       const box = new THREE.Box3().setFromObject(model);
-      const center = box.getCenter(new THREE.Vector3());
-      model.position.set(-center.x, -box.min.y, -center.z);
+      const center = new THREE.Vector3();
+      box.getCenter(center);
+      model.position.sub(center);
+      // Place bottom at y=0
+      const finalBox = new THREE.Box3().setFromObject(model);
+      model.position.y -= finalBox.min.y;
 
       // Debug logging
-      const size = box.getSize(new THREE.Vector3());
+      const finalSize = new THREE.Vector3();
+      finalBox.getSize(finalSize);
       const anchor = maplibregl.MercatorCoordinate.fromLngLat([this.lng, this.lat], 0);
-      console.log("[ThreeGLBLayer] Model loaded:", {
-        boundingBox: { x: size.x.toFixed(2), y: size.y.toFixed(2), z: size.z.toFixed(2) },
+      console.log("[ThreeGLBLayer] Model ready:", {
+        finalSize: { x: finalSize.x.toFixed(2), y: finalSize.y.toFixed(2), z: finalSize.z.toFixed(2) },
         mercatorScale: anchor.meterInMercatorCoordinateUnits(),
         anchor: { lng: this.lng, lat: this.lat },
+        wasMillimeters: rawSize.x > 1000 || rawSize.y > 1000 || rawSize.z > 1000,
       });
 
       this.model = model;

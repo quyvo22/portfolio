@@ -30,6 +30,7 @@ import {
   Ruler,
   Sun,
   ChevronDown,
+  MapPin,
 } from "lucide-react";
 import Image from "next/image";
 import {
@@ -46,6 +47,10 @@ import { Controls } from "./controls";
 import { Lighting } from "./lighting";
 import { Progress } from "./progress";
 import { ErrorFallback } from "./fallback";
+
+const MapOverlay = typeof window !== "undefined"
+  ? require("./map-overlay").MapOverlay
+  : null;
 
 // Lazy-load advanced components only when flags are on
 const SectionPlanes = FLAGS.SECTION_PLANES
@@ -144,6 +149,7 @@ export function ModelViewer({ url, poster }: ModelViewerProps) {
   const [sectionAxes, setSectionAxes] = useState({ x: false, y: false, z: false });
   const [sectionOpen, setSectionOpen] = useState(false);
   const [measureActive, setMeasureActive] = useState(false);
+  const [showMap, setShowMap] = useState(false);
 
   // Lazy mount via IntersectionObserver
   useEffect(() => {
@@ -376,6 +382,19 @@ export function ModelViewer({ url, poster }: ModelViewerProps) {
             </ToolbarBtn>
           )}
 
+          {/* Map overlay toggle */}
+          <ToolbarBtn
+            onClick={() => {
+              setShowMap((m) => !m);
+              emit("3d_toolbar_toggle_map", { showMap: !showMap });
+            }}
+            active={showMap}
+            label={showMap ? "Hide map" : "Show map"}
+            title={showMap ? "Hide map overlay" : "Show map overlay"}
+          >
+            <MapPin size={16} />
+          </ToolbarBtn>
+
           <div className="w-px h-4 bg-border mx-1" />
 
           {/* Fullscreen */}
@@ -489,6 +508,11 @@ export function ModelViewer({ url, poster }: ModelViewerProps) {
             <Box size={48} strokeWidth={1} />
             <p className="text-sm font-medium">Trình xem 3D</p>
           </div>
+        )}
+
+        {/* Map overlay */}
+        {showMap && MapOverlay && (
+          <MapOverlay modelUrl={url} />
         )}
       </div>
     </div>

@@ -35,19 +35,21 @@ export default function GlbOnMapPage() {
       style: {
         version: 8,
         sources: {
-          "esri-satellite": {
+          "carto-positron": {
             type: "raster",
             tiles: [
-              "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+              "https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png",
+              "https://b.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png",
+              "https://c.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png",
             ],
             tileSize: 256,
           },
         },
         layers: [
           {
-            id: "satellite",
+            id: "carto-positron",
             type: "raster",
-            source: "esri-satellite",
+            source: "carto-positron",
           },
         ],
       },
