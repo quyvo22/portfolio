@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { MapPin, MapPinOff } from "lucide-react";
-import type { MapController } from "@/lib/map3d";
+import type { MapController, ModelInstance } from "@/lib/map3d";
 
 interface GLBViewerProps {
   url: string;
@@ -25,14 +25,36 @@ export function GLBViewer({ url }: GLBViewerProps) {
 
     initedRef.current = true;
 
-    import("@/lib/map3d").then(({ initMap }) =>
-      initMap(el, url)
-    ).then((ctrl) => {
-      controllerRef.current = ctrl;
-      setMapReady(true);
-    }).catch((err) => {
-      console.error("GLBViewer map init failed:", err);
-    });
+    import("@/lib/map3d")
+      .then(({ initMap }) => initMap(el))
+      .then(async (ctrl) => {
+        controllerRef.current = ctrl;
+
+        const inst: ModelInstance = {
+          id: "glb-viewer-model",
+          name: "Building",
+          url,
+          lng: 108.2208,
+          lat: 16.0678,
+          altitude: 0,
+          scale: 1,
+          heading: 0,
+        };
+        await ctrl.addModel(inst);
+
+        ctrl.setClickHandler((lngLat) => {
+          ctrl.modifyModel("glb-viewer-model", {
+            lng: lngLat.lng,
+            lat: lngLat.lat,
+          });
+          setCoords({ lng: lngLat.lng, lat: lngLat.lat });
+        });
+
+        setMapReady(true);
+      })
+      .catch((err) => {
+        console.error("GLBViewer map init failed:", err);
+      });
 
     return () => {
       controllerRef.current?.destroy();

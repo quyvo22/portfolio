@@ -1,11 +1,32 @@
 import * as maptilersdk from "@maptiler/sdk";
+import "@maptiler/sdk/dist/maptiler-sdk.css";
 import { Layer3D, AltitudeReference } from "@maptiler/3d";
 
+export interface ModelInstance {
+  id: string;
+  name: string;
+  url: string;
+  lng: number;
+  lat: number;
+  altitude: number;
+  scale: number;
+  heading: number;
+}
+
 export interface MapController {
-  rotateBuilding(heading: number): void;
-  scaleBuilding(value: number): void;
-  moveBuilding(lngLat: { lng: number; lat: number }): void;
-  toggleMapVisibility(): void;
+  addModel(instance: ModelInstance): Promise<void>;
+  removeModel(id: string): void;
+  modifyModel(
+    id: string,
+    props: Partial<Omit<ModelInstance, "id" | "url">>,
+  ): void;
+  getModelIds(): string[];
+  setClickHandler(handler: ((lngLat: { lng: number; lat: number }) => void) | null): void;
+  setMoveHandler(handler: ((lngLat: { lng: number; lat: number }) => void) | null): void;
+  zoomTo(zoom: number): void;
+  getZoom(): number;
+  flyTo(lngLat: { lng: number; lat: number }, zoom?: number): void;
+  setCrosshairCursor(enabled: boolean): void;
   destroy(): void;
 }
 
@@ -15,14 +36,13 @@ const DEFAULT_PITCH = 60;
 
 export async function initMap(
   container: HTMLElement,
-  modelUrl: string,
 ): Promise<MapController> {
   maptilersdk.config.apiKey =
     process.env.NEXT_PUBLIC_MAPTILER_API_KEY ?? "";
 
   const map = new maptilersdk.Map({
     container,
-    style: maptilersdk.MapStyle.STREETS_V4,
+    style: maptilersdk.MapStyle.STREETS,
     center: DEFAULT_CENTER,
     zoom: DEFAULT_ZOOM,
     pitch: DEFAULT_PITCH,
@@ -30,50 +50,104 @@ export async function initMap(
   });
 
   return new Promise<MapController>((resolve, reject) => {
-    map.on("ready", async () => {
+    map.on("load", () => {
       try {
         const layer3D = new Layer3D("3d-layer");
         map.addLayer(layer3D as unknown as maptilersdk.LayerSpecification);
 
-        const item = await layer3D.addMeshFromURL(
-          "building",
-          modelUrl,
-          {
-            lngLat: { lng: DEFAULT_CENTER[0], lat: DEFAULT_CENTER[1] },
-            heading: 0,
-            scale: 1,
-            altitude: 0,
-            altitudeReference: AltitudeReference.GROUND,
-          },
-        );
+        let clickHandler: ((lngLat: { lng: number; lat: number }) => void) | null = null;
+        let moveHandler: ((lngLat: { lng: number; lat: number }) => void) | null = null;
 
-        let mapVisible = true;
+        map.on("click", (e) => {
+          clickHandler?.(e.lngLat);
+        });
+
+        map.on("mousemove", (e) => {
+          moveHandler?.(e.lngLat);
+        });
 
         const controller: MapController = {
-          rotateBuilding(heading: number) {
-            item.modify({ heading });
+          async addModel(instance: ModelInstance) {
+            console.log("[map3d] Adding model:", instance.id, instance.url);
+            try {
+              const item = await layer3D.addMeshFromURL(instance.id, instance.url, {
+                lngLat: { lng: instance.lng, lat: instance.lat },
+                heading: instance.heading,
+                scale: instance.scale,
+                altitude: instance.altitude,
+                altitudeReference: AltitudeReference.GROUND,
+              });
+              console.log("[map3d] Model added successfully:", instance.id, item);
+            } catch (err) {
+              console.error("[map3d] Failed to add model:", instance.id, err);
+              throw err;
+            }
           },
-          scaleBuilding(value: number) {
-            item.modify({ scale: value });
+
+          removeModel(id: string) {
+            layer3D.removeMesh(id);
           },
-          moveBuilding(lngLat: { lng: number; lat: number }) {
-            item.modify({ lngLat });
+
+          modifyModel(
+            id: string,
+            props: Partial<Omit<ModelInstance, "id" | "url">>,
+          ) {
+            const item = layer3D.getItem3D(id);
+            if (!item) {
+              console.warn("[map3d] modifyModel: item not found:", id);
+              return;
+            }
+
+            const opts: Record<string, unknown> = {};
+            if (props.heading !== undefined) opts.heading = props.heading;
+            if (props.scale !== undefined) opts.scale = props.scale;
+            if (props.altitude !== undefined) opts.altitude = props.altitude;
+            if (props.lng !== undefined || props.lat !== undefined) {
+              opts.lngLat = {
+                lng: props.lng ?? 0,
+                lat: props.lat ?? 0,
+              };
+            }
+            item.modify(opts);
           },
-          toggleMapVisibility() {
-            mapVisible = !mapVisible;
-            map.getContainer().style.visibility = mapVisible
-              ? "visible"
-              : "hidden";
+
+          getModelIds() {
+            return [];
           },
+
+          setClickHandler(handler) {
+            clickHandler = handler;
+          },
+
+          setMoveHandler(handler) {
+            moveHandler = handler;
+          },
+
+          zoomTo(zoom: number) {
+            map.zoomTo(zoom, { duration: 600 });
+          },
+
+          getZoom() {
+            return map.getZoom();
+          },
+
+          flyTo(lngLat: { lng: number; lat: number }, zoom?: number) {
+            map.flyTo({
+              center: [lngLat.lng, lngLat.lat],
+              zoom: zoom ?? map.getZoom(),
+              duration: 800,
+            });
+          },
+
+          setCrosshairCursor(enabled: boolean) {
+            map.getCanvas().style.cursor = enabled ? "crosshair" : "";
+          },
+
           destroy() {
             layer3D.clear();
             map.remove();
           },
         };
-
-        map.on("click", (e) => {
-          item.modify({ lngLat: e.lngLat });
-        });
 
         resolve(controller);
       } catch (err) {
@@ -82,7 +156,7 @@ export async function initMap(
     });
 
     map.on("error", (e) => {
-      reject(new Error(`Map error: ${e.error?.message ?? "unknown"}`));
+      console.error("[map3d] Map error event:", e);
     });
   });
 }

@@ -12,7 +12,7 @@ const DEFAULT_MODEL =
 
 export default function GlbOnMapPage() {
   return (
-    <div className="h-screen p-4">
+    <div className="h-[calc(100vh-4rem)]">
       <MapViewer modelUrl={DEFAULT_MODEL} />
     </div>
   );
