@@ -96,7 +96,7 @@ export function createGLBOverlay(
       loadModel();
     },
 
-    render(_gl, matrix) {
+    render(_gl, args) {
       if (
         currentPerf.lazyRender &&
         shouldLazyRender(lastRender, 1000, isInteracting)
@@ -115,7 +115,7 @@ export function createGLBOverlay(
         .scale(new THREE.Vector3(s, -s, s));
 
       camera.projectionMatrix = new THREE.Matrix4()
-        .fromArray(matrix as unknown as number[])
+        .fromArray(args.modelViewProjectionMatrix as number[])
         .multiply(m);
 
       if (renderer && config.scene) {

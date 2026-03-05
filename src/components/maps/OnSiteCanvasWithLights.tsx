@@ -211,7 +211,7 @@ export function OnSiteCanvasWithLights({
         loadModel();
       },
 
-      render(_gl, matrix) {
+      render(_gl, args) {
         const prof = profileRef.current;
         if (prof.lazyRender && !needsRenderRef.current && shouldLazyRender(
           lastRenderRef.current,
@@ -240,7 +240,7 @@ export function OnSiteCanvasWithLights({
           .scale(new THREE.Vector3(s, -s, s));
 
         cameraRef.current.projectionMatrix = new THREE.Matrix4()
-          .fromArray(matrix as unknown as number[])
+          .fromArray(args.modelViewProjectionMatrix as unknown as number[])
           .multiply(m);
 
         if (rendererRef.current && sceneRef.current) {

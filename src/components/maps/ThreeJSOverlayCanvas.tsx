@@ -113,7 +113,7 @@ export function ThreeJSOverlayCanvas({
         loadModel();
       },
 
-      render(_gl, matrix) {
+      render(_gl, args) {
         const p = placementRef.current;
         const anchor = maplibregl.MercatorCoordinate.fromLngLat(
           [p.lng, p.lat],
@@ -127,7 +127,7 @@ export function ThreeJSOverlayCanvas({
           .scale(new THREE.Vector3(scale, -scale, scale));
 
         cameraRef.current.projectionMatrix = new THREE.Matrix4()
-          .fromArray(matrix as unknown as number[])
+          .fromArray(args.modelViewProjectionMatrix as unknown as number[])
           .multiply(m);
 
         if (rendererRef.current && sceneRef.current) {
