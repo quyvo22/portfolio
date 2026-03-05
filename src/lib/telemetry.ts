@@ -20,7 +20,6 @@ type TelemetryEvent =
   | "3d_toolbar_toggle_measure"
   | "3d_toolbar_switch_env"
   | "3d_toolbar_intensity_change"
-  | "3d_toolbar_toggle_map"
   | "geocode_success"
   | "elevation_fetch"
   | "placement_confirmed"

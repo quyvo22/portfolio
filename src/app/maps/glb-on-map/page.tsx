@@ -32,27 +32,7 @@ export default function GlbOnMapPage() {
 
     const map = new maplibregl.Map({
       container,
-      style: {
-        version: 8,
-        sources: {
-          "carto-positron": {
-            type: "raster",
-            tiles: [
-              "https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png",
-              "https://b.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png",
-              "https://c.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png",
-            ],
-            tileSize: 256,
-          },
-        },
-        layers: [
-          {
-            id: "carto-positron",
-            type: "raster",
-            source: "carto-positron",
-          },
-        ],
-      },
+      style: "https://demotiles.maplibre.org/style.json",
       center: [DEFAULT_LNG, DEFAULT_LAT],
       zoom: 18,
       pitch: 0,

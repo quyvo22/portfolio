@@ -18,6 +18,11 @@ const ModelViewer = dynamicImport(
   { ssr: false }
 );
 
+const GLBViewer = dynamicImport(
+  () => import("@/components/viewer/GLBViewer").then((m) => m.GLBViewer),
+  { ssr: false }
+);
+
 interface Props {
   params: { slug: string };
 }
@@ -106,10 +111,13 @@ export default async function ProjectPage({ params }: Props) {
             }
           >
             {validateModelUrl(project.modelUrl).valid ? (
-              <ModelViewer
-                url={project.modelUrl!}
-                poster={project.thumbnail}
-              />
+              <>
+                <ModelViewer
+                  url={project.modelUrl!}
+                  poster={project.thumbnail}
+                />
+                <GLBViewer url={project.modelUrl!} />
+              </>
             ) : (
               <div className="card">
                 <div className="aspect-square bg-surface-overlay flex flex-col items-center justify-center gap-3 text-ink-faint">

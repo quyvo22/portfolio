@@ -30,7 +30,6 @@ import {
   Ruler,
   Sun,
   ChevronDown,
-  MapPin,
 } from "lucide-react";
 import Image from "next/image";
 import {
@@ -47,10 +46,6 @@ import { Controls } from "./controls";
 import { Lighting } from "./lighting";
 import { Progress } from "./progress";
 import { ErrorFallback } from "./fallback";
-
-const MapOverlay = typeof window !== "undefined"
-  ? require("./map-overlay").MapOverlay
-  : null;
 
 // Lazy-load advanced components only when flags are on
 const SectionPlanes = FLAGS.SECTION_PLANES
@@ -149,7 +144,6 @@ export function ModelViewer({ url, poster }: ModelViewerProps) {
   const [sectionAxes, setSectionAxes] = useState({ x: false, y: false, z: false });
   const [sectionOpen, setSectionOpen] = useState(false);
   const [measureActive, setMeasureActive] = useState(false);
-  const [showMap, setShowMap] = useState(false);
 
   // Lazy mount via IntersectionObserver
   useEffect(() => {
@@ -276,8 +270,8 @@ export function ModelViewer({ url, poster }: ModelViewerProps) {
     return () => document.removeEventListener("mousedown", onClick);
   }, [sectionOpen]);
 
-  // Derived — only one WebGL context at a time to prevent context loss
-  const showCanvas = inView && !error && !showMap;
+  // Derived
+  const showCanvas = inView && !error;
   const isMobile = profile.isLowEnd;
   const dpr: [number, number] = profile.isLowEnd ? [1, 1] : [1, 1.5];
 
@@ -381,19 +375,6 @@ export function ModelViewer({ url, poster }: ModelViewerProps) {
               <Sun size={16} />
             </ToolbarBtn>
           )}
-
-          {/* Map overlay toggle */}
-          <ToolbarBtn
-            onClick={() => {
-              setShowMap((m) => !m);
-              emit("3d_toolbar_toggle_map", { showMap: !showMap });
-            }}
-            active={showMap}
-            label={showMap ? "Hide map" : "Show map"}
-            title={showMap ? "Hide map overlay" : "Show map overlay"}
-          >
-            <MapPin size={16} />
-          </ToolbarBtn>
 
           <div className="w-px h-4 bg-border mx-1" />
 
@@ -510,10 +491,6 @@ export function ModelViewer({ url, poster }: ModelViewerProps) {
           </div>
         )}
 
-        {/* Map overlay */}
-        {showMap && MapOverlay && (
-          <MapOverlay modelUrl={url} />
-        )}
       </div>
     </div>
   );
