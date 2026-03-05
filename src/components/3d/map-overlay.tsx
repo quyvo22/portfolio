@@ -38,15 +38,17 @@ export function MapOverlay({ modelUrl, lng = 108.2208, lat = 16.0678 }: MapOverl
         mapRef.current = map;
         setReady(true);
 
-        const layer = new ThreeGLBLayer({
-          modelUrl,
-          lng,
-          lat,
-          debug: true,
-        });
-
-        map.addLayer(layer as maplibregl.AddLayerObject);
-        layerRef.current = layer;
+        // FIX 3: prevent duplicate layer
+        if (!map.getLayer("glb-model")) {
+          const layer = new ThreeGLBLayer({
+            modelUrl,
+            lng,
+            lat,
+            debug: true,
+          });
+          map.addLayer(layer as maplibregl.AddLayerObject);
+          layerRef.current = layer;
+        }
       });
 
       map.on("move", () => {

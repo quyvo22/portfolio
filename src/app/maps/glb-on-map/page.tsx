@@ -62,20 +62,22 @@ export default function GlbOnMapPage() {
     map.on("load", () => {
       mapRef.current = map;
 
-      const layer = new ThreeGLBLayer({
-        modelUrl: DEFAULT_MODEL,
-        lng: DEFAULT_LNG,
-        lat: DEFAULT_LAT,
-        onProgress: setProgress,
-        onError: setError,
-        onLoaded: () => {
-          setProgress(100);
-          setLoading(false);
-        },
-      });
+      if (!map.getLayer("glb-model")) {
+        const layer = new ThreeGLBLayer({
+          modelUrl: DEFAULT_MODEL,
+          lng: DEFAULT_LNG,
+          lat: DEFAULT_LAT,
+          onProgress: setProgress,
+          onError: setError,
+          onLoaded: () => {
+            setProgress(100);
+            setLoading(false);
+          },
+        });
 
-      map.addLayer(layer as maplibregl.AddLayerObject);
-      layerRef.current = layer;
+        map.addLayer(layer as maplibregl.AddLayerObject);
+        layerRef.current = layer;
+      }
     });
 
     map.on("error", (e) => {
