@@ -219,9 +219,9 @@ export function MapViewer({ modelUrl }: MapViewerProps) {
   }
 
   return (
-    <div className="relative w-full h-full">
+    <div className="relative w-full" style={{ height: "100%" }}>
       {/* ── Map canvas ── */}
-      <div ref={containerRef} className="absolute inset-0" />
+      <div ref={containerRef} style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, width: "100%", height: "100%" }} />
 
       {/* Loading */}
       {loading && (
