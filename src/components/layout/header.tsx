@@ -11,6 +11,7 @@ import { LanguageToggle } from "./language-toggle";
 const navLinks = [
   { href: "/", label: "Trang chủ" },
   { href: "/portfolio", label: "Dự án" },
+  { href: "/maps", label: "Maps" },
   { href: "/blog", label: "Bài viết" },
   { href: "/about", label: "Giới thiệu" },
 ];
