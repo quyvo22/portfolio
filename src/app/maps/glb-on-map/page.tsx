@@ -1,5 +1,6 @@
 "use client";
 
+import "maplibre-gl/dist/maplibre-gl.css";
 import dynamic from "next/dynamic";
 
 const MapViewer = dynamic(
