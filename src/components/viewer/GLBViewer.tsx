@@ -72,6 +72,13 @@ export function GLBViewer({ url }: GLBViewerProps) {
 
   return (
     <div className="flex flex-col">
+      {/* MapTiler CSS — loaded when map is visible */}
+      {showMap && (
+        <link
+          rel="stylesheet"
+          href="https://cdn.maptiler.com/maptiler-sdk-js/v3.11.1/maptiler-sdk.css"
+        />
+      )}
       <button
         onClick={toggleMap}
         className={`flex items-center gap-2 px-4 py-2 text-sm font-medium border-b border-border transition-colors ${
