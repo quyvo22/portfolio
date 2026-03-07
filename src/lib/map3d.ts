@@ -1,5 +1,6 @@
 import * as maptilersdk from "@maptiler/sdk";
-import "@maptiler/sdk/dist/maptiler-sdk.css";
+// CSS loaded via CDN <link> in src/app/maps/layout.tsx
+// (npm import blocked by package exports field on production builds)
 import { Layer3D, AltitudeReference } from "@maptiler/3d";
 
 export interface ModelInstance {
@@ -37,13 +38,8 @@ const DEFAULT_PITCH = 60;
 export async function initMap(
   container: HTMLElement,
 ): Promise<MapController> {
-  const apiKey = process.env.NEXT_PUBLIC_MAPTILER_API_KEY ?? "";
-  if (!apiKey) {
-    console.error("[map3d] NEXT_PUBLIC_MAPTILER_API_KEY is missing!");
-  } else {
-    console.log("[map3d] API key loaded:", apiKey.slice(0, 4) + "...");
-  }
-  maptilersdk.config.apiKey = apiKey;
+  maptilersdk.config.apiKey =
+    process.env.NEXT_PUBLIC_MAPTILER_API_KEY ?? "";
 
   const map = new maptilersdk.Map({
     container,
