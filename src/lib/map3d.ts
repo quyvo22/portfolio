@@ -37,8 +37,13 @@ const DEFAULT_PITCH = 60;
 export async function initMap(
   container: HTMLElement,
 ): Promise<MapController> {
-  maptilersdk.config.apiKey =
-    process.env.NEXT_PUBLIC_MAPTILER_API_KEY ?? "";
+  const apiKey = process.env.NEXT_PUBLIC_MAPTILER_API_KEY ?? "";
+  if (!apiKey) {
+    console.error("[map3d] NEXT_PUBLIC_MAPTILER_API_KEY is missing!");
+  } else {
+    console.log("[map3d] API key loaded:", apiKey.slice(0, 4) + "...");
+  }
+  maptilersdk.config.apiKey = apiKey;
 
   const map = new maptilersdk.Map({
     container,
