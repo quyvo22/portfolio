@@ -73,62 +73,62 @@ export default async function ProjectPage({ params }: Props) {
         <p className="mt-2 text-sm text-ink-faint">Năm: {project.year}</p>
       </div>
 
-      {/* Tab Navigation */}
+      {/* Tabs: Viewers + Maps */}
       <ProjectTabs
         slug={slug}
         modelUrl={project.modelUrl}
         projectTitle={project.title}
-      />
-
-      {/* Viewer placeholders */}
-      <div className="grid-12">
-        {showPdf && (
-          <div
-            className={
-              show3d
-                ? "col-span-4 sm:col-span-8 lg:col-span-7"
-                : "col-span-4 sm:col-span-8 lg:col-span-12"
-            }
-          >
-            {project.pdfUrl ? (
-              <PdfViewer url={project.pdfUrl} />
-            ) : (
-              <div className="card">
-                <div className="aspect-[3/4] bg-surface-overlay flex flex-col items-center justify-center gap-3 text-ink-faint">
-                  <FileText size={48} strokeWidth={1} />
-                  <p className="text-sm font-medium">Chưa có file PDF</p>
+      >
+        {/* Viewers tab content (passed as children) */}
+        <div className="grid-12">
+          {showPdf && (
+            <div
+              className={
+                show3d
+                  ? "col-span-4 sm:col-span-8 lg:col-span-7"
+                  : "col-span-4 sm:col-span-8 lg:col-span-12"
+              }
+            >
+              {project.pdfUrl ? (
+                <PdfViewer url={project.pdfUrl} />
+              ) : (
+                <div className="card">
+                  <div className="aspect-[3/4] bg-surface-overlay flex flex-col items-center justify-center gap-3 text-ink-faint">
+                    <FileText size={48} strokeWidth={1} />
+                    <p className="text-sm font-medium">Chưa có file PDF</p>
+                  </div>
                 </div>
-              </div>
-            )}
-          </div>
-        )}
-        {show3d && (
-          <div
-            className={
-              showPdf
-                ? "col-span-4 sm:col-span-8 lg:col-span-5"
-                : "col-span-4 sm:col-span-8 lg:col-span-12"
-            }
-          >
-            {validateModelUrl(project.modelUrl).valid ? (
-              <>
-                <ModelViewer
-                  url={project.modelUrl!}
-                  poster={project.thumbnail}
-                />
-                <GLBViewer url={project.modelUrl!} />
-              </>
-            ) : (
-              <div className="card">
-                <div className="aspect-square bg-surface-overlay flex flex-col items-center justify-center gap-3 text-ink-faint">
-                  <Box size={48} strokeWidth={1} />
-                  <p className="text-sm font-medium">Chưa có model 3D</p>
+              )}
+            </div>
+          )}
+          {show3d && (
+            <div
+              className={
+                showPdf
+                  ? "col-span-4 sm:col-span-8 lg:col-span-5"
+                  : "col-span-4 sm:col-span-8 lg:col-span-12"
+              }
+            >
+              {validateModelUrl(project.modelUrl).valid ? (
+                <>
+                  <ModelViewer
+                    url={project.modelUrl!}
+                    poster={project.thumbnail}
+                  />
+                  <GLBViewer url={project.modelUrl!} />
+                </>
+              ) : (
+                <div className="card">
+                  <div className="aspect-square bg-surface-overlay flex flex-col items-center justify-center gap-3 text-ink-faint">
+                    <Box size={48} strokeWidth={1} />
+                    <p className="text-sm font-medium">Chưa có model 3D</p>
+                  </div>
                 </div>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
+              )}
+            </div>
+          )}
+        </div>
+      </ProjectTabs>
 
       {/* Details */}
       <div className="mt-12 grid-12">
