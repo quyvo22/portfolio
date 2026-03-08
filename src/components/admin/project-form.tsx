@@ -1,10 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { ImageUpload } from "./image-upload";
 import { PdfUpload } from "./pdf-upload";
 import { ModelUpload } from "./model-upload";
+
+interface MapSceneOption {
+  id: string;
+  name: string;
+}
 
 interface ProjectFormData {
   id?: string;
@@ -20,6 +25,7 @@ interface ProjectFormData {
   tags: string[];
   pdfUrl: string;
   modelUrl: string;
+  mapSceneId: string;
   published: boolean;
 }
 
@@ -46,10 +52,21 @@ export function ProjectForm({ initialData, mode }: Props) {
     tags: initialData?.tags || [],
     pdfUrl: initialData?.pdfUrl || "",
     modelUrl: initialData?.modelUrl || "",
+    mapSceneId: initialData?.mapSceneId || "",
     published: initialData?.published || false,
   });
 
   const [tagsInput, setTagsInput] = useState(form.tags.join(", "));
+  const [mapScenes, setMapScenes] = useState<MapSceneOption[]>([]);
+
+  useEffect(() => {
+    fetch("/api/map-scenes")
+      .then((res) => res.json())
+      .then((data) => {
+        if (Array.isArray(data)) setMapScenes(data);
+      })
+      .catch(() => {});
+  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -209,6 +226,24 @@ export function ProjectForm({ initialData, mode }: Props) {
         value={form.modelUrl}
         onChange={(url) => setForm({ ...form, modelUrl: url })}
       />
+
+      <div>
+        <label className="block text-sm font-medium text-ink-muted mb-1">
+          Map Scene
+        </label>
+        <select
+          value={form.mapSceneId}
+          onChange={(e) => setForm({ ...form, mapSceneId: e.target.value })}
+          className="w-full px-3 py-2 rounded-lg bg-surface-overlay border border-border text-ink text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+        >
+          <option value="">— Không liên kết —</option>
+          {mapScenes.map((s) => (
+            <option key={s.id} value={s.id}>
+              {s.name}
+            </option>
+          ))}
+        </select>
+      </div>
 
       <div className="flex items-center gap-2">
         <input

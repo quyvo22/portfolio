@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import type { Project as PrismaProject, BlogPost as PrismaBlogPost } from "@prisma/client";
+import type { Project as PrismaProject, BlogPost as PrismaBlogPost, MapScene as PrismaMapScene } from "@prisma/client";
 
 // Parse tags JSON string to array
 function parseTags(tags: string): string[] {
@@ -40,6 +40,7 @@ export async function getPublishedProjects() {
 export async function getProjectBySlug(slug: string) {
   const project = await prisma.project.findUnique({
     where: { slug },
+    include: { mapScene: true },
   });
   if (!project) return null;
   return transformProject(project);
@@ -75,4 +76,25 @@ export async function getAllPosts() {
     orderBy: { createdAt: "desc" },
   });
   return posts.map(transformPost);
+}
+
+// ── Map Scenes ────────────────────────────────────────────
+
+export async function getPublishedMapScenes() {
+  return prisma.mapScene.findMany({
+    where: { published: true },
+    orderBy: { createdAt: "desc" },
+  });
+}
+
+export async function getAllMapScenes() {
+  return prisma.mapScene.findMany({
+    orderBy: { createdAt: "desc" },
+  });
+}
+
+export async function getMapSceneById(id: string) {
+  return prisma.mapScene.findUnique({
+    where: { id },
+  });
 }

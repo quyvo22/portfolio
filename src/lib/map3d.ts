@@ -26,6 +26,9 @@ export interface MapController {
   setMoveHandler(handler: ((lngLat: { lng: number; lat: number }) => void) | null): void;
   zoomTo(zoom: number): void;
   getZoom(): number;
+  getCenter(): { lng: number; lat: number };
+  getPitch(): number;
+  getBearing(): number;
   flyTo(lngLat: { lng: number; lat: number }, zoom?: number): void;
   setCrosshairCursor(enabled: boolean): void;
   destroy(): void;
@@ -35,8 +38,16 @@ const DEFAULT_CENTER: [number, number] = [108.2208, 16.0678];
 const DEFAULT_ZOOM = 18;
 const DEFAULT_PITCH = 60;
 
+export interface MapInitOptions {
+  center?: [number, number];
+  zoom?: number;
+  pitch?: number;
+  bearing?: number;
+}
+
 export async function initMap(
   container: HTMLElement,
+  options?: MapInitOptions,
 ): Promise<MapController> {
   maptilersdk.config.apiKey =
     process.env.NEXT_PUBLIC_MAPTILER_API_KEY ?? "";
@@ -44,10 +55,10 @@ export async function initMap(
   const map = new maptilersdk.Map({
     container,
     style: maptilersdk.MapStyle.STREETS,
-    center: DEFAULT_CENTER,
-    zoom: DEFAULT_ZOOM,
-    pitch: DEFAULT_PITCH,
-    bearing: 0,
+    center: options?.center ?? DEFAULT_CENTER,
+    zoom: options?.zoom ?? DEFAULT_ZOOM,
+    pitch: options?.pitch ?? DEFAULT_PITCH,
+    bearing: options?.bearing ?? 0,
   });
 
   return new Promise<MapController>((resolve, reject) => {
@@ -130,6 +141,19 @@ export async function initMap(
 
           getZoom() {
             return map.getZoom();
+          },
+
+          getCenter() {
+            const c = map.getCenter();
+            return { lng: c.lng, lat: c.lat };
+          },
+
+          getPitch() {
+            return map.getPitch();
+          },
+
+          getBearing() {
+            return map.getBearing();
           },
 
           flyTo(lngLat: { lng: number; lat: number }, zoom?: number) {

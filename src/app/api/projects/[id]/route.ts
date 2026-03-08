@@ -11,6 +11,7 @@ interface RouteParams {
 export async function GET(_request: Request, { params }: RouteParams) {
   const project = await prisma.project.findUnique({
     where: { id: params.id },
+    include: { mapScene: true },
   });
 
   if (!project) {
@@ -28,7 +29,7 @@ export async function PUT(request: Request, { params }: RouteParams) {
   }
 
   const body = await request.json();
-  const { slug, title, description, category, thumbnail, imageAlt, imageWidth, imageHeight, year, tags, pdfUrl, modelUrl, published } = body;
+  const { slug, title, description, category, thumbnail, imageAlt, imageWidth, imageHeight, year, tags, pdfUrl, modelUrl, published, mapSceneId } = body;
 
   const project = await prisma.project.update({
     where: { id: params.id },
@@ -45,6 +46,7 @@ export async function PUT(request: Request, { params }: RouteParams) {
       ...(tags !== undefined && { tags: JSON.stringify(tags) }),
       ...(pdfUrl !== undefined && { pdfUrl }),
       ...(modelUrl !== undefined && { modelUrl }),
+      ...(mapSceneId !== undefined && { mapSceneId: mapSceneId || null }),
       ...(published !== undefined && { published }),
     },
   });

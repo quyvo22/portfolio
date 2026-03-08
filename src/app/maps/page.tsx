@@ -1,7 +1,12 @@
 import Link from "next/link";
-import { Map, Box } from "lucide-react";
+import { Map, Box, Eye } from "lucide-react";
+import { getPublishedMapScenes } from "@/lib/data";
 
-export default function MapsPage() {
+export const dynamic = "force-dynamic";
+
+export default async function MapsPage() {
+  const scenes = await getPublishedMapScenes();
+
   return (
     <section className="grid-container py-16">
       <div className="max-w-3xl mx-auto">
@@ -15,6 +20,7 @@ export default function MapsPage() {
         </p>
 
         <div className="grid gap-4 sm:grid-cols-2">
+          {/* GLB on Map — sandbox editor */}
           <Link
             href="/maps/glb-on-map"
             className="group flex flex-col gap-3 p-6 rounded-xl border border-border bg-surface hover:border-accent-400 hover:shadow-lg transition-all duration-200"
@@ -26,7 +32,41 @@ export default function MapsPage() {
               mode và transform controls.
             </p>
           </Link>
+
+          {/* Saved scenes from DB */}
+          {scenes.map((scene) => {
+            const modelCount = (() => {
+              try {
+                return JSON.parse(scene.models).length;
+              } catch {
+                return 0;
+              }
+            })();
+
+            return (
+              <Link
+                key={scene.id}
+                href={`/maps/scenes/${scene.id}`}
+                className="group flex flex-col gap-3 p-6 rounded-xl border border-border bg-surface hover:border-accent-400 hover:shadow-lg transition-all duration-200"
+              >
+                <Eye size={24} className="text-accent-500 group-hover:scale-110 transition-transform" />
+                <h2 className="font-serif text-lg font-semibold">{scene.name}</h2>
+                {scene.description && (
+                  <p className="text-sm text-ink-muted">{scene.description}</p>
+                )}
+                <p className="text-xs text-ink-faint">
+                  {modelCount} model{modelCount !== 1 ? "s" : ""}
+                </p>
+              </Link>
+            );
+          })}
         </div>
+
+        {scenes.length === 0 && (
+          <p className="text-sm text-ink-faint mt-6">
+            Chưa có scene nào được lưu. Vào GLB on Map để tạo và lưu scene.
+          </p>
+        )}
       </div>
     </section>
   );

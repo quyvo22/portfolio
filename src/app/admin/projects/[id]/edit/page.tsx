@@ -34,6 +34,7 @@ export default async function EditProjectPage({ params }: Props) {
           tags: JSON.parse(project.tags),
           pdfUrl: project.pdfUrl || "",
           modelUrl: project.modelUrl || "",
+          mapSceneId: project.mapSceneId || "",
           published: project.published,
         }}
       />

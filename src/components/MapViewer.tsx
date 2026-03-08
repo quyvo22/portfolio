@@ -14,7 +14,11 @@ import {
   Trash2,
   Box,
   MousePointerClick,
+  Upload,
+  Save,
 } from "lucide-react";
+import { useGlbUpload } from "@/hooks/useGlbUpload";
+import type { MapInitOptions } from "@/lib/map3d";
 
 /* ── Helpers ── */
 let idCounter = 0;
@@ -25,6 +29,9 @@ function nextId() {
 /* ── Props ── */
 interface MapViewerProps {
   modelUrl?: string;
+  sceneId?: string;
+  editable?: boolean;
+  onSceneSaved?: (sceneId: string) => void;
 }
 
 /* ── Default sample models ── */
@@ -43,7 +50,7 @@ const SAMPLE_MODELS = [
   },
 ];
 
-export function MapViewer({ modelUrl }: MapViewerProps) {
+export function MapViewer({ modelUrl, sceneId, editable = true, onSceneSaved }: MapViewerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const controllerRef = useRef<MapController | null>(null);
 
@@ -51,6 +58,12 @@ export function MapViewer({ modelUrl }: MapViewerProps) {
   const [error, setError] = useState<string | null>(null);
   const [leftOpen, setLeftOpen] = useState(true);
   const [rightOpen, setRightOpen] = useState(true);
+
+  /* ── Scene save state ── */
+  const [sceneName, setSceneName] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [currentSceneId, setCurrentSceneId] = useState<string | null>(sceneId ?? null);
+  const [showSaveForm, setShowSaveForm] = useState(false);
 
   /* ── Multi-model state ── */
   const [models, setModels] = useState<ModelInstance[]>([]);
@@ -70,27 +83,78 @@ export function MapViewer({ modelUrl }: MapViewerProps) {
   } | null>(null);
   const prevZoomRef = useRef<number | null>(null);
 
+  /* ── GLB upload ── */
+  const [uploadState, uploadActions] = useGlbUpload();
+  const [uploadDragOver, setUploadDragOver] = useState(false);
+
   const selected = models.find((m) => m.id === selectedId) ?? null;
 
-  /* ── Init map (no model loaded by default) ── */
+  /* ── Init map — ORIGINAL pattern (proven working) ── */
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
 
     let destroyed = false;
 
-    import("@/lib/map3d")
-      .then(({ initMap }) => initMap(el))
-      .then(async (ctrl) => {
-        if (destroyed) {
-          ctrl.destroy();
+    // Step 1: If sceneId, fetch scene data first
+    const scenePromise = sceneId
+      ? fetch(`/api/map-scenes/${sceneId}`)
+          .then((r) => (r.ok ? r.json() : null))
+          .catch(() => null)
+      : Promise.resolve(null);
+
+    scenePromise
+      .then((sceneData) => {
+        if (destroyed) return null;
+
+        const initOptions: MapInitOptions | undefined = sceneData
+          ? {
+              center: [sceneData.centerLng, sceneData.centerLat],
+              zoom: sceneData.zoom,
+              pitch: sceneData.pitch,
+              bearing: sceneData.bearing,
+            }
+          : undefined;
+
+        return import("@/lib/map3d").then(({ initMap }) =>
+          initMap(el, initOptions).then((ctrl) => ({ ctrl, sceneData }))
+        );
+      })
+      .then(async (result) => {
+        if (!result || destroyed) {
+          result?.ctrl.destroy();
           return;
         }
+        const { ctrl, sceneData } = result;
         controllerRef.current = ctrl;
         setLoading(false);
 
-        // If a default modelUrl is passed, auto-add it
-        if (modelUrl) {
+        // Load scene models
+        if (sceneData) {
+          setSceneName(sceneData.name);
+          try {
+            const sceneModels: ModelInstance[] = JSON.parse(sceneData.models);
+            const loaded: ModelInstance[] = [];
+            for (const m of sceneModels) {
+              try {
+                await ctrl.addModel(m);
+                loaded.push(m);
+              } catch (err) {
+                console.warn("[MapViewer] Failed to load scene model:", m.id, err);
+              }
+            }
+            if (loaded.length > 0) {
+              setModels(loaded);
+              setSelectedId(loaded[0].id);
+              for (const m of loaded) {
+                const num = parseInt(m.id.replace("model-", ""), 10);
+                if (!isNaN(num) && num >= idCounter) idCounter = num;
+              }
+            }
+          } catch { /* invalid JSON */ }
+        }
+        // If a default modelUrl is passed (and no scene), auto-add it
+        else if (modelUrl) {
           const inst: ModelInstance = {
             id: nextId(),
             name: modelUrl.split("/").pop()?.replace(".glb", "") ?? "Building",
@@ -208,6 +272,53 @@ export function MapViewer({ modelUrl }: MapViewerProps) {
     },
     [selectedId],
   );
+
+  /* ── Save scene ── */
+  const saveScene = useCallback(async () => {
+    const ctrl = controllerRef.current;
+    if (!ctrl || !sceneName.trim()) return;
+
+    setSaving(true);
+    setError(null);
+    try {
+      const center = ctrl.getCenter();
+      const payload = {
+        name: sceneName.trim(),
+        models: JSON.stringify(models),
+        centerLng: center.lng,
+        centerLat: center.lat,
+        zoom: ctrl.getZoom(),
+        pitch: ctrl.getPitch(),
+        bearing: ctrl.getBearing(),
+        published: true,
+      };
+
+      const url = currentSceneId
+        ? `/api/map-scenes/${currentSceneId}`
+        : "/api/map-scenes";
+      const method = currentSceneId ? "PUT" : "POST";
+
+      const res = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Failed to save scene");
+      }
+
+      const saved = await res.json();
+      setCurrentSceneId(saved.id);
+      setShowSaveForm(false);
+      onSceneSaved?.(saved.id);
+    } catch (err) {
+      setError(`Save failed: ${err instanceof Error ? err.message : err}`);
+    } finally {
+      setSaving(false);
+    }
+  }, [sceneName, models, currentSceneId, onSceneSaved]);
 
   /* ── Transform helpers (update both Layer3D and React state) ── */
   function updateSelected(props: Partial<ModelInstance>) {
@@ -475,6 +586,54 @@ export function MapViewer({ modelUrl }: MapViewerProps) {
                   Add New Model
                 </span>
 
+                {/* Upload GLB file */}
+                <div
+                  onDragOver={(e) => { e.preventDefault(); setUploadDragOver(true); }}
+                  onDragLeave={() => setUploadDragOver(false)}
+                  onDrop={async (e) => {
+                    e.preventDefault();
+                    setUploadDragOver(false);
+                    const file = e.dataTransfer.files?.[0];
+                    if (!file) return;
+                    const url = await uploadActions.uploadFile(file);
+                    if (url) addModel(url, file.name.replace(/\.glb$/i, ""));
+                  }}
+                  onClick={() => !uploadState.uploading && uploadActions.inputRef.current?.click()}
+                  className={`flex flex-col items-center gap-1.5 py-4 rounded-lg border border-dashed transition-colors ${
+                    uploadState.uploading ? "cursor-wait" : "cursor-pointer"
+                  } ${uploadDragOver ? "border-blue-400 bg-blue-400/10" : "border-white/20 hover:border-white/40"}`}
+                >
+                  {uploadState.uploading ? (
+                    <div className="flex flex-col items-center gap-1.5">
+                      <span className="text-[11px] text-white/70">Uploading… {uploadState.progress}%</span>
+                      <div className="w-32 h-1 bg-white/10 rounded-full overflow-hidden">
+                        <div className="h-full bg-blue-400 rounded-full transition-all" style={{ width: `${uploadState.progress}%` }} />
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <Upload size={16} className="text-white/40" />
+                      <span className="text-[11px] text-white/50">Drop .glb or click to upload</span>
+                    </>
+                  )}
+                </div>
+                <input
+                  ref={uploadActions.inputRef}
+                  type="file"
+                  accept=".glb"
+                  className="hidden"
+                  disabled={uploadState.uploading}
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    const url = await uploadActions.uploadFile(file);
+                    if (url) addModel(url, file.name.replace(/\.glb$/i, ""));
+                  }}
+                />
+                {uploadState.error && (
+                  <p className="text-[10px] text-red-400">{uploadState.error}</p>
+                )}
+
                 {/* Quick-add sample models */}
                 <div className="space-y-1">
                   {SAMPLE_MODELS.map((s) => (
@@ -623,14 +782,67 @@ export function MapViewer({ modelUrl }: MapViewerProps) {
         </div>
       </div>
 
+      {/* ── Save Scene form (admin) ── */}
+      {editable && showSaveForm && (
+        <div className="absolute bottom-16 left-1/2 -translate-x-1/2 z-20 w-72 bg-black/80 backdrop-blur-md border border-white/10 rounded-xl p-4 space-y-3">
+          <h4 className="text-xs font-semibold uppercase tracking-wider text-white/60">
+            {currentSceneId ? "Update Scene" : "Save Scene"}
+          </h4>
+          <input
+            type="text"
+            placeholder="Scene name"
+            value={sceneName}
+            onChange={(e) => setSceneName(e.target.value)}
+            className="w-full px-3 py-1.5 text-xs bg-white/10 border border-white/10 rounded text-white placeholder-white/30 focus:border-blue-400 focus:outline-none"
+          />
+          <div className="flex gap-2">
+            <button
+              disabled={!sceneName.trim() || saving}
+              onClick={saveScene}
+              className="flex-1 px-3 py-1.5 text-xs font-medium bg-green-500/80 hover:bg-green-500 text-white rounded transition-colors disabled:opacity-40 flex items-center justify-center gap-1.5"
+            >
+              {saving ? (
+                <>
+                  <div className="w-3 h-3 border border-white border-t-transparent rounded-full animate-spin" />
+                  Saving…
+                </>
+              ) : (
+                <>
+                  <Save size={12} />
+                  {currentSceneId ? "Update" : "Save"}
+                </>
+              )}
+            </button>
+            <button
+              onClick={() => setShowSaveForm(false)}
+              className="px-3 py-1.5 text-xs text-white/60 hover:text-white bg-white/10 rounded transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* ── Bottom status bar ── */}
-      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 px-4 py-2 bg-black/60 backdrop-blur-md border border-white/10 rounded-full">
-        <span className="text-[11px] text-white/60 font-mono">
-          {models.length} model{models.length !== 1 ? "s" : ""} ·{" "}
-          {selected
-            ? `${selected.name} — ${selected.lat.toFixed(5)}°N, ${selected.lng.toFixed(5)}°E`
-            : "No selection"}
-        </span>
+      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 flex items-center gap-2">
+        <div className="px-4 py-2 bg-black/60 backdrop-blur-md border border-white/10 rounded-full">
+          <span className="text-[11px] text-white/60 font-mono">
+            {models.length} model{models.length !== 1 ? "s" : ""} ·{" "}
+            {selected
+              ? `${selected.name} — ${selected.lat.toFixed(5)}°N, ${selected.lng.toFixed(5)}°E`
+              : "No selection"}
+          </span>
+        </div>
+        {editable && (
+          <button
+            onClick={() => setShowSaveForm((v) => !v)}
+            className="px-3 py-2 bg-black/60 backdrop-blur-md border border-white/10 rounded-full text-white/60 hover:text-white transition-colors flex items-center gap-1.5"
+            title="Save scene"
+          >
+            <Save size={14} />
+            <span className="text-[11px]">Save</span>
+          </button>
+        )}
       </div>
     </div>
   );

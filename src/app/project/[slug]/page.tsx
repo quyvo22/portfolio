@@ -23,6 +23,18 @@ const GLBViewer = dynamicImport(
   { ssr: false }
 );
 
+const MapSceneViewer = dynamicImport(
+  () => import("@/components/MapViewer").then((m) => {
+    // Wrap MapViewer with editable=false for readonly view
+    const Wrapper = ({ sceneId }: { sceneId: string }) => (
+      <m.MapViewer sceneId={sceneId} editable={false} />
+    );
+    Wrapper.displayName = "MapSceneViewer";
+    return Wrapper;
+  }),
+  { ssr: false }
+);
+
 interface Props {
   params: { slug: string };
 }
@@ -129,6 +141,16 @@ export default async function ProjectPage({ params }: Props) {
           )}
         </div>
       </ProjectTabs>
+
+      {/* Map Scene (if linked) */}
+      {project.mapSceneId && (
+        <div className="mt-8">
+          <h2 className="text-xl mb-4">Bản đồ 3D</h2>
+          <div className="rounded-xl overflow-hidden border border-border" style={{ height: "500px" }}>
+            <MapSceneViewer sceneId={project.mapSceneId} />
+          </div>
+        </div>
+      )}
 
       {/* Details */}
       <div className="mt-12 grid-12">

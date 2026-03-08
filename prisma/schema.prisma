@@ -51,19 +51,20 @@ model VerificationToken {
 }
 
 model User {
-  id            String    @id @default(cuid())
+  id            String     @id @default(cuid())
   name          String?
-  email         String?   @unique
+  email         String?    @unique
   emailVerified DateTime?
   image         String?
   password      String?
-  role          String    @default("viewer")
+  role          String     @default("viewer")
   accounts      Account[]
   sessions      Session[]
   projects      Project[]
   posts         BlogPost[]
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  mapScenes     MapScene[]
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
 }
 
 // ------------------------------------------------------------
@@ -71,24 +72,26 @@ model User {
 // ------------------------------------------------------------
 
 model Project {
-  id          String   @id @default(cuid())
-  slug        String   @unique
+  id          String    @id @default(cuid())
+  slug        String    @unique
   title       String
   description String
-  category    String   @default("both") // "pdf" | "3d" | "both"
+  category    String    @default("both") // "pdf" | "3d" | "both"
   thumbnail   String?
   imageAlt    String?
   imageWidth  Int?
   imageHeight Int?
   year        Int
-  tags        String   @default("[]") // JSON array stored as string
+  tags        String    @default("[]") // JSON array stored as string
   pdfUrl      String?
   modelUrl    String?
-  published   Boolean  @default(false)
+  published   Boolean   @default(false)
   authorId    String?
-  author      User?    @relation(fields: [authorId], references: [id])
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  author      User?     @relation(fields: [authorId], references: [id])
+  mapSceneId  String?
+  mapScene    MapScene? @relation(fields: [mapSceneId], references: [id])
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 }
 
 // ------------------------------------------------------------
@@ -113,4 +116,26 @@ model BlogPost {
   author      User?    @relation(fields: [authorId], references: [id])
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+}
+
+// ------------------------------------------------------------
+// Map Scene
+// ------------------------------------------------------------
+
+model MapScene {
+  id          String    @id @default(cuid())
+  name        String
+  description String    @default("")
+  models      String    @default("[]") // JSON: ModelInstance[]
+  centerLng   Float     @default(108.2208)
+  centerLat   Float     @default(16.0678)
+  zoom        Float     @default(18)
+  pitch       Float     @default(60)
+  bearing     Float     @default(0)
+  published   Boolean   @default(false)
+  authorId    String?
+  author      User?     @relation(fields: [authorId], references: [id])
+  projects    Project[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 }
