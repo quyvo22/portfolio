@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { useGlbUpload } from "@/hooks/useGlbUpload";
 import type { MapInitOptions } from "@/lib/map3d";
+import { AddressSearch } from "@/components/AddressSearch";
 
 /* ── Helpers ── */
 let idCounter = 0;
@@ -88,6 +89,40 @@ export function MapViewer({ modelUrl, sceneId, editable = true, onSceneSaved }: 
   const [uploadDragOver, setUploadDragOver] = useState(false);
 
   const selected = models.find((m) => m.id === selectedId) ?? null;
+  const addressSearchEnabled = process.env.NEXT_PUBLIC_ENABLE_ADDRESS_SEARCH !== "false";
+
+  /* ── Place model at address location ── */
+  const placeModelAt = useCallback(
+    async (lng: number, lat: number) => {
+      const ctrl = controllerRef.current;
+      if (!ctrl) return;
+
+      const targetId = selectedId || models[0]?.id;
+      if (targetId) {
+        ctrl.modifyModel(targetId, { lng, lat });
+        setModels((prev) =>
+          prev.map((m) => (m.id === targetId ? { ...m, lng, lat } : m)),
+        );
+        setSelectedId(targetId);
+      } else {
+        // No models — add default sample at this position
+        const inst: ModelInstance = {
+          id: nextId(),
+          name: "Placed Model",
+          url: SAMPLE_MODELS[0].url,
+          lng,
+          lat,
+          altitude: 0,
+          scale: 50,
+          heading: 0,
+        };
+        await ctrl.addModel(inst);
+        setModels((prev) => [...prev, inst]);
+        setSelectedId(inst.id);
+      }
+    },
+    [selectedId, models],
+  );
 
   /* ── Init map — ORIGINAL pattern (proven working) ── */
   useEffect(() => {
@@ -355,6 +390,14 @@ export function MapViewer({ modelUrl, sceneId, editable = true, onSceneSaved }: 
             Dismiss
           </button>
         </div>
+      )}
+
+      {/* ── Address Search (feature-flagged) ── */}
+      {addressSearchEnabled && !loading && (
+        <AddressSearch
+          controller={controllerRef.current}
+          onPlaceModel={placeModelAt}
+        />
       )}
 
       {/* ── Place-mode overlay: crosshair + hover coords ── */}

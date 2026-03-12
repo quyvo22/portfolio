@@ -31,6 +31,7 @@ export interface MapController {
   getBearing(): number;
   flyTo(lngLat: { lng: number; lat: number }, zoom?: number): void;
   setCrosshairCursor(enabled: boolean): void;
+  getMapInstance(): unknown;
   destroy(): void;
 }
 
@@ -166,6 +167,10 @@ export async function initMap(
 
           setCrosshairCursor(enabled: boolean) {
             map.getCanvas().style.cursor = enabled ? "crosshair" : "";
+          },
+
+          getMapInstance() {
+            return map;
           },
 
           destroy() {
