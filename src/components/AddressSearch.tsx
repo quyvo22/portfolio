@@ -8,6 +8,8 @@ import {
   fetchVicmapParcelsByBBOX,
   bboxAroundPoint,
   computeCentroid,
+  computeArea,
+  computePerimeter,
 } from "@/services/vicmap";
 
 const VICMAP_ENABLED = process.env.NEXT_PUBLIC_ENABLE_VICMAP !== "false";
@@ -17,12 +19,19 @@ const PARCEL_FILL_HOVER = "vicmap-parcels-fill-hover";
 const PARCEL_LINE = "vicmap-parcels-line";
 const GHOST_MARKER_ID = "address-ghost-marker";
 
+interface ParcelProperties {
+  area: number;
+  perimeter: number;
+  pfi: string;
+}
+
 interface AddressSearchProps {
   controller: MapController | null;
   onPlaceModel?: (lng: number, lat: number) => void;
+  onParcelSelect?: (feature: GeoJSON.Feature | null) => void;
 }
 
-export function AddressSearch({ controller, onPlaceModel }: AddressSearchProps) {
+export function AddressSearch({ controller, onPlaceModel, onParcelSelect }: AddressSearchProps) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<GeocodingResult[]>([]);
   const [open, setOpen] = useState(false);
@@ -30,11 +39,13 @@ export function AddressSearch({ controller, onPlaceModel }: AddressSearchProps) 
   const [loadingParcels, setLoadingParcels] = useState(false);
   const [centroid, setCentroid] = useState<[number, number] | null>(null);
   const [parcelCount, setParcelCount] = useState(0);
+  const [parcelProps, setParcelProps] = useState<ParcelProperties | null>(null);
 
   const abortRef = useRef<AbortController | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const markerRef = useRef<unknown>(null);
+  const hoveredPfiRef = useRef<string>("");
 
   // Debounced geocode search
   const search = useCallback(
@@ -83,7 +94,7 @@ export function AddressSearch({ controller, onPlaceModel }: AddressSearchProps) 
     return controller ? (controller as unknown as { getMapInstance(): unknown }).getMapInstance() : null;
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  // eslint-disable-next-line
   type MapAny = any;
 
   function removeGhostMarker() {
@@ -118,6 +129,7 @@ export function AddressSearch({ controller, onPlaceModel }: AddressSearchProps) 
       map.off?.("mousemove", PARCEL_FILL, handleParcelHover);
       map.off?.("mouseleave", PARCEL_FILL, handleParcelLeave);
       map.off?.("click", PARCEL_FILL, handleParcelClick);
+      map.off?.("dblclick", PARCEL_FILL, handleParcelDblClick);
       if (map.getLayer(PARCEL_FILL_HOVER)) map.removeLayer(PARCEL_FILL_HOVER);
       if (map.getLayer(PARCEL_FILL)) map.removeLayer(PARCEL_FILL);
       if (map.getLayer(PARCEL_LINE)) map.removeLayer(PARCEL_LINE);
@@ -128,23 +140,28 @@ export function AddressSearch({ controller, onPlaceModel }: AddressSearchProps) 
     removeGhostMarker();
     setCentroid(null);
     setParcelCount(0);
+    setParcelProps(null);
+    onParcelSelect?.(null);
   }
 
   function handleParcelHover(e: MapAny) {
     const map = getMap() as MapAny;
     if (!map || !e.features?.length) return;
+    const pfi = e.features[0].properties?.parcel_pfi ?? "";
+    if (pfi === hoveredPfiRef.current) return; // skip redundant setFilter
+    hoveredPfiRef.current = pfi;
     map.getCanvas().style.cursor = "pointer";
-    // Highlight hovered feature
     map.setFilter(PARCEL_FILL_HOVER, [
       "==",
       ["get", "parcel_pfi"],
-      e.features[0].properties?.parcel_pfi ?? "",
+      pfi,
     ]);
   }
 
   function handleParcelLeave() {
     const map = getMap() as MapAny;
     if (!map) return;
+    hoveredPfiRef.current = "";
     map.getCanvas().style.cursor = "";
     map.setFilter(PARCEL_FILL_HOVER, ["==", ["get", "parcel_pfi"], ""]);
   }
@@ -155,6 +172,21 @@ export function AddressSearch({ controller, onPlaceModel }: AddressSearchProps) 
     const c = computeCentroid(feature as GeoJSON.Feature);
     setCentroid(c);
     addGhostMarker(c[0], c[1]);
+  }
+
+  function handleParcelDblClick(e: MapAny) {
+    e.preventDefault?.();
+    if (!e.features?.length) return;
+    const feature = e.features[0] as GeoJSON.Feature;
+    const area = computeArea(feature);
+    const perimeter = computePerimeter(feature);
+    const pfi = (feature.properties as Record<string, string>)?.parcel_pfi ?? "";
+    setParcelProps({ area, perimeter, pfi });
+
+    const c = computeCentroid(feature);
+    setCentroid(c);
+    addGhostMarker(c[0], c[1]);
+    onParcelSelect?.(feature);
   }
 
   function addParcelLayers(geojson: GeoJSON.FeatureCollection) {
@@ -179,13 +211,13 @@ export function AddressSearch({ controller, onPlaceModel }: AddressSearchProps) 
       },
     });
 
-    // Hover highlight fill (brighter on hover)
+    // Hover highlight fill (red on hover)
     map.addLayer({
       id: PARCEL_FILL_HOVER,
       type: "fill",
       source: PARCEL_SOURCE,
       paint: {
-        "fill-color": "#60a5fa",
+        "fill-color": "#ef4444",
         "fill-opacity": 0.45,
       },
       filter: ["==", ["get", "parcel_pfi"], ""],
@@ -202,10 +234,11 @@ export function AddressSearch({ controller, onPlaceModel }: AddressSearchProps) 
       },
     });
 
-    // Wire hover/click events
+    // Wire hover/click/dblclick events
     map.on("mousemove", PARCEL_FILL, handleParcelHover);
     map.on("mouseleave", PARCEL_FILL, handleParcelLeave);
     map.on("click", PARCEL_FILL, handleParcelClick);
+    map.on("dblclick", PARCEL_FILL, handleParcelDblClick);
   }
 
   async function handleSelect(result: GeocodingResult) {
@@ -328,6 +361,35 @@ export function AddressSearch({ controller, onPlaceModel }: AddressSearchProps) 
                 <MapPin size={12} />
                 Place model here
               </button>
+
+              {/* Property panel — shown after dblclick */}
+              {parcelProps && (
+                <div className="pt-2 mt-2 border-t border-white/10 space-y-1">
+                  <div className="text-[10px] text-white/50 uppercase font-semibold">
+                    Parcel Properties
+                  </div>
+                  <div className="flex justify-between text-[11px]">
+                    <span className="text-white/50">Area</span>
+                    <span className="text-white/80 font-mono">
+                      {parcelProps.area < 10000
+                        ? `${parcelProps.area.toFixed(1)} m²`
+                        : `${(parcelProps.area / 10000).toFixed(3)} ha`}
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-[11px]">
+                    <span className="text-white/50">Perimeter</span>
+                    <span className="text-white/80 font-mono">
+                      {parcelProps.perimeter.toFixed(1)} m
+                    </span>
+                  </div>
+                  {parcelProps.pfi && (
+                    <div className="flex justify-between text-[11px]">
+                      <span className="text-white/50">PFI</span>
+                      <span className="text-white/80 font-mono">{parcelProps.pfi}</span>
+                    </div>
+                  )}
+                </div>
+              )}
             </>
           )}
         </div>

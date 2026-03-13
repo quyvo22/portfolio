@@ -16,10 +16,16 @@ import {
   MousePointerClick,
   Upload,
   Save,
+  Eye,
+  EyeOff,
+  Building2,
 } from "lucide-react";
 import { useGlbUpload } from "@/hooks/useGlbUpload";
 import type { MapInitOptions } from "@/lib/map3d";
 import { AddressSearch } from "@/components/AddressSearch";
+import pointOnSurface from "@turf/point-on-surface";
+import booleanPointInPolygon from "@turf/boolean-point-in-polygon";
+import { point as turfPoint } from "@turf/helpers";
 
 /* ── Helpers ── */
 let idCounter = 0;
@@ -84,9 +90,17 @@ export function MapViewer({ modelUrl, sceneId, editable = true, onSceneSaved }: 
   } | null>(null);
   const prevZoomRef = useRef<number | null>(null);
 
+  /* ── Parcel-aware placement ── */
+  const [selectedParcel, setSelectedParcel] = useState<GeoJSON.Feature | null>(null);
+  const [outsideParcel, setOutsideParcel] = useState(false);
+
   /* ── GLB upload ── */
   const [uploadState, uploadActions] = useGlbUpload();
   const [uploadDragOver, setUploadDragOver] = useState(false);
+
+  /* ── Building toggle ── */
+  const buildingToggleEnabled = process.env.NEXT_PUBLIC_ENABLE_BUILDING_TOGGLE !== "false";
+  const [buildingsVisible, setBuildingsVisible] = useState(true);
 
   const selected = models.find((m) => m.id === selectedId) ?? null;
   const addressSearchEnabled = process.env.NEXT_PUBLIC_ENABLE_ADDRESS_SEARCH !== "false";
@@ -234,9 +248,20 @@ export function MapViewer({ modelUrl, sceneId, editable = true, onSceneSaved }: 
         }
       }
 
-      // Track mouse position for coordinate preview
+      // Track mouse position for coordinate preview + inside/outside check
       ctrl.setMoveHandler((lngLat) => {
         setHoverCoords({ lng: lngLat.lng, lat: lngLat.lat });
+        if (selectedParcel) {
+          try {
+            const pt = turfPoint([lngLat.lng, lngLat.lat]);
+            const inside = booleanPointInPolygon(pt, selectedParcel as Parameters<typeof booleanPointInPolygon>[1]);
+            setOutsideParcel(!inside);
+          } catch {
+            setOutsideParcel(false);
+          }
+        } else {
+          setOutsideParcel(false);
+        }
       });
 
       // Click to place
@@ -263,6 +288,42 @@ export function MapViewer({ modelUrl, sceneId, editable = true, onSceneSaved }: 
         prevZoomRef.current = null;
       }
     }
+  }, [pickOnClick, selectedId, selectedParcel]);
+
+  /* ── Arrow key nudge in place-mode ── */
+  useEffect(() => {
+    if (!pickOnClick || !selectedId) return;
+    const NUDGE = 0.000001; // ~0.1m
+
+    function handleKeyDown(e: KeyboardEvent) {
+      // Skip when input/textarea focused
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+
+      let dLng = 0;
+      let dLat = 0;
+      switch (e.key) {
+        case "ArrowLeft": dLng = -NUDGE; break;
+        case "ArrowRight": dLng = NUDGE; break;
+        case "ArrowUp": dLat = NUDGE; break;
+        case "ArrowDown": dLat = -NUDGE; break;
+        default: return;
+      }
+      e.preventDefault();
+
+      setModels((prev) =>
+        prev.map((m) => {
+          if (m.id !== selectedId) return m;
+          const newLng = m.lng + dLng;
+          const newLat = m.lat + dLat;
+          controllerRef.current?.modifyModel(selectedId, { lng: newLng, lat: newLat });
+          return { ...m, lng: newLng, lat: newLat };
+        }),
+      );
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
   }, [pickOnClick, selectedId]);
 
   /* ── Model actions ── */
@@ -299,13 +360,28 @@ export function MapViewer({ modelUrl, sceneId, editable = true, onSceneSaved }: 
 
   const removeModel = useCallback(
     (id: string) => {
-      controllerRef.current?.removeModel(id);
+      controllerRef.current?.disposeModel(id);
       setModels((prev) => prev.filter((m) => m.id !== id));
       if (selectedId === id) {
         setSelectedId(null);
+        setPickOnClick(false);
       }
     },
     [selectedId],
+  );
+
+  const toggleVisibility = useCallback(
+    (id: string) => {
+      setModels((prev) =>
+        prev.map((m) => {
+          if (m.id !== id) return m;
+          const newVisible = !(m.visible !== false);
+          controllerRef.current?.setModelVisible(id, newVisible);
+          return { ...m, visible: newVisible };
+        }),
+      );
+    },
+    [],
   );
 
   /* ── Save scene ── */
@@ -397,6 +473,7 @@ export function MapViewer({ modelUrl, sceneId, editable = true, onSceneSaved }: 
         <AddressSearch
           controller={controllerRef.current}
           onPlaceModel={placeModelAt}
+          onParcelSelect={setSelectedParcel}
         />
       )}
 
@@ -422,12 +499,43 @@ export function MapViewer({ modelUrl, sceneId, editable = true, onSceneSaved }: 
             </span>
           </div>
 
-          {/* Hover coordinates near cursor */}
+          {/* Hover coordinates near cursor + inside/outside indicator */}
           {hoverCoords && (
-            <div className="absolute bottom-16 left-1/2 -translate-x-1/2 z-10 px-3 py-1.5 bg-black/70 backdrop-blur-sm rounded-lg">
-              <span className="text-[11px] text-blue-300 font-mono">
+            <div className={`absolute bottom-16 left-1/2 -translate-x-1/2 z-10 px-3 py-1.5 backdrop-blur-sm rounded-lg ${
+              outsideParcel && selectedParcel ? "bg-red-900/70" : "bg-black/70"
+            }`}>
+              <span className={`text-[11px] font-mono ${
+                outsideParcel && selectedParcel ? "text-red-300" : "text-blue-300"
+              }`}>
                 {hoverCoords.lat.toFixed(6)}°N, {hoverCoords.lng.toFixed(6)}°E
+                {outsideParcel && selectedParcel && (
+                  <span className="ml-1.5 text-red-400">(outside parcel)</span>
+                )}
               </span>
+            </div>
+          )}
+
+          {/* Snap to parcel center button */}
+          {selectedParcel && selectedId && (
+            <div className="absolute bottom-28 left-1/2 -translate-x-1/2 z-10">
+              <button
+                onClick={() => {
+                  try {
+                    const center = pointOnSurface(selectedParcel as Parameters<typeof pointOnSurface>[0]);
+                    const [lng, lat] = center.geometry.coordinates;
+                    controllerRef.current?.modifyModel(selectedId, { lng, lat });
+                    setModels((prev) =>
+                      prev.map((m) =>
+                        m.id === selectedId ? { ...m, lng, lat } : m,
+                      ),
+                    );
+                  } catch { /* noop */ }
+                }}
+                className="px-3 py-1.5 text-xs font-medium bg-green-500/80 hover:bg-green-500 text-white rounded-full backdrop-blur-sm transition-colors flex items-center gap-1.5"
+              >
+                <MapPin size={12} />
+                Snap to parcel center
+              </button>
             </div>
           )}
         </>
@@ -746,7 +854,7 @@ export function MapViewer({ modelUrl, sceneId, editable = true, onSceneSaved }: 
                       m.id === selectedId
                         ? "bg-blue-500/30 border border-blue-400/40"
                         : "bg-white/5 border border-transparent hover:bg-white/10"
-                    }`}
+                    } ${m.visible === false ? "opacity-50" : ""}`}
                   >
                     <Box
                       size={14}
@@ -762,6 +870,20 @@ export function MapViewer({ modelUrl, sceneId, editable = true, onSceneSaved }: 
                         {m.lng.toFixed(4)}, {m.lat.toFixed(4)}
                       </p>
                     </div>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleVisibility(m.id);
+                      }}
+                      className="p-1.5 hover:bg-white/15 rounded transition-colors shrink-0"
+                      title={m.visible === false ? "Show model" : "Hide model"}
+                    >
+                      {m.visible === false ? (
+                        <EyeOff size={14} className="text-white/50" />
+                      ) : (
+                        <Eye size={14} className="text-white/70" />
+                      )}
+                    </button>
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
@@ -876,6 +998,24 @@ export function MapViewer({ modelUrl, sceneId, editable = true, onSceneSaved }: 
               : "No selection"}
           </span>
         </div>
+        {buildingToggleEnabled && (
+          <button
+            onClick={() => {
+              const next = !buildingsVisible;
+              setBuildingsVisible(next);
+              controllerRef.current?.setBuildingsVisible(next);
+            }}
+            className={`px-3 py-2 bg-black/60 backdrop-blur-md border rounded-full transition-colors flex items-center gap-1.5 ${
+              buildingsVisible
+                ? "border-white/10 text-white/60 hover:text-white"
+                : "border-orange-400/40 text-orange-400"
+            }`}
+            title={buildingsVisible ? "Hide buildings" : "Show buildings"}
+          >
+            <Building2 size={14} />
+            <span className="text-[11px]">{buildingsVisible ? "Buildings" : "Buildings off"}</span>
+          </button>
+        )}
         {editable && (
           <button
             onClick={() => setShowSaveForm((v) => !v)}

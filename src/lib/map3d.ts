@@ -12,11 +12,14 @@ export interface ModelInstance {
   altitude: number;
   scale: number;
   heading: number;
+  visible?: boolean;
 }
 
 export interface MapController {
   addModel(instance: ModelInstance): Promise<void>;
   removeModel(id: string): void;
+  disposeModel(id: string): void;
+  setModelVisible(id: string, visible: boolean): void;
   modifyModel(
     id: string,
     props: Partial<Omit<ModelInstance, "id" | "url">>,
@@ -31,6 +34,7 @@ export interface MapController {
   getBearing(): number;
   flyTo(lngLat: { lng: number; lat: number }, zoom?: number): void;
   setCrosshairCursor(enabled: boolean): void;
+  setBuildingsVisible(visible: boolean): void;
   getMapInstance(): unknown;
   destroy(): void;
 }
@@ -98,7 +102,30 @@ export async function initMap(
           },
 
           removeModel(id: string) {
-            layer3D.removeMesh(id);
+            try { layer3D.removeMesh(id); } catch { /* noop */ }
+            map.triggerRepaint();
+          },
+
+          disposeModel(id: string) {
+            // Try item-level disposal first, then removeMesh as fallback
+            const item = layer3D.getItem3D(id);
+            if (item) {
+              try { (item as unknown as { dispose?: () => void }).dispose?.(); } catch { /* noop */ }
+            }
+            try { layer3D.removeMesh(id); } catch { /* noop */ }
+            map.triggerRepaint();
+          },
+
+          setModelVisible(id: string, visible: boolean) {
+            const item = layer3D.getItem3D(id);
+            if (!item) return;
+            try {
+              item.modify({ visible });
+            } catch {
+              // fallback: set opacity to 0/1
+              try { item.setOpacity(visible ? 1 : 0); } catch { /* noop */ }
+            }
+            map.triggerRepaint();
           },
 
           modifyModel(
@@ -167,6 +194,24 @@ export async function initMap(
 
           setCrosshairCursor(enabled: boolean) {
             map.getCanvas().style.cursor = enabled ? "crosshair" : "";
+          },
+
+          setBuildingsVisible(visible: boolean) {
+            const vis = visible ? "visible" : "none";
+            const style = map.getStyle();
+            if (!style?.layers) return;
+            for (const layer of style.layers) {
+              // Match MapTiler building extrusion/fill layers but skip our custom 3d-layer
+              if (
+                layer.id !== "3d-layer" &&
+                /building/i.test(layer.id) &&
+                (layer.type === "fill-extrusion" || layer.type === "fill" || layer.type === "line")
+              ) {
+                try {
+                  map.setLayoutProperty(layer.id, "visibility", vis);
+                } catch { /* noop */ }
+              }
+            }
           },
 
           getMapInstance() {

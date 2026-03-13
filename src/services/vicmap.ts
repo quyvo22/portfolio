@@ -2,6 +2,9 @@
  * Client-side Vicmap WFS fetcher — calls /api/vicmap-proxy.
  * Tries V_PARCEL_MP (polygons) first, falls back to CAD_AREA_BDY (lines).
  */
+import turfArea from "@turf/area";
+import turfLength from "@turf/length";
+import polygonToLine from "@turf/polygon-to-line";
 
 const EMPTY_FC: GeoJSON.FeatureCollection = { type: "FeatureCollection", features: [] };
 
@@ -81,4 +84,23 @@ export function computeCentroid(feature: GeoJSON.Feature): [number, number] {
 
   const sum = coords.reduce((acc, c) => [acc[0] + c[0], acc[1] + c[1]], [0, 0]);
   return [sum[0] / coords.length, sum[1] / coords.length];
+}
+
+/** Geodesic area in m² using @turf/area. */
+export function computeArea(feature: GeoJSON.Feature): number {
+  try {
+    return turfArea(feature);
+  } catch {
+    return 0;
+  }
+}
+
+/** Geodesic perimeter in metres: polygon → line → length. */
+export function computePerimeter(feature: GeoJSON.Feature): number {
+  try {
+    const line = polygonToLine(feature as Parameters<typeof polygonToLine>[0]);
+    return turfLength(line, { units: "meters" });
+  } catch {
+    return 0;
+  }
 }
