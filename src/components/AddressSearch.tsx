@@ -13,7 +13,9 @@ import {
 const VICMAP_ENABLED = process.env.NEXT_PUBLIC_ENABLE_VICMAP !== "false";
 const PARCEL_SOURCE = "vicmap-parcels";
 const PARCEL_FILL = "vicmap-parcels-fill";
+const PARCEL_FILL_HOVER = "vicmap-parcels-fill-hover";
 const PARCEL_LINE = "vicmap-parcels-line";
+const GHOST_MARKER_ID = "address-ghost-marker";
 
 interface AddressSearchProps {
   controller: MapController | null;
@@ -32,6 +34,7 @@ export function AddressSearch({ controller, onPlaceModel }: AddressSearchProps) 
   const abortRef = useRef<AbortController | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const markerRef = useRef<unknown>(null);
 
   // Debounced geocode search
   const search = useCallback(
@@ -80,30 +83,82 @@ export function AddressSearch({ controller, onPlaceModel }: AddressSearchProps) 
     return controller ? (controller as unknown as { getMapInstance(): unknown }).getMapInstance() : null;
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  type MapAny = any;
+
+  function removeGhostMarker() {
+    if (markerRef.current) {
+      (markerRef.current as { remove(): void }).remove();
+      markerRef.current = null;
+    }
+  }
+
+  function addGhostMarker(lon: number, lat: number) {
+    removeGhostMarker();
+    const map = getMap() as MapAny;
+    if (!map) return;
+    // Dynamically import maptilersdk for Marker (already loaded client-side)
+    import("@maptiler/sdk").then((sdk) => {
+      const el = document.createElement("div");
+      el.id = GHOST_MARKER_ID;
+      el.style.cssText =
+        "width:20px;height:20px;border-radius:50%;background:rgba(59,130,246,0.5);border:2px solid #3b82f6;box-shadow:0 0 8px rgba(59,130,246,0.6);pointer-events:none;";
+      const marker = new sdk.Marker({ element: el })
+        .setLngLat([lon, lat])
+        .addTo(map);
+      markerRef.current = marker;
+    });
+  }
+
   function clearParcelLayers() {
-    const map = getMap() as {
-      getLayer(id: string): unknown;
-      removeLayer(id: string): void;
-      getSource(id: string): unknown;
-      removeSource(id: string): void;
-    } | null;
+    const map = getMap() as MapAny;
     if (!map) return;
     try {
+      // Remove event listeners
+      map.off?.("mousemove", PARCEL_FILL, handleParcelHover);
+      map.off?.("mouseleave", PARCEL_FILL, handleParcelLeave);
+      map.off?.("click", PARCEL_FILL, handleParcelClick);
+      if (map.getLayer(PARCEL_FILL_HOVER)) map.removeLayer(PARCEL_FILL_HOVER);
       if (map.getLayer(PARCEL_FILL)) map.removeLayer(PARCEL_FILL);
       if (map.getLayer(PARCEL_LINE)) map.removeLayer(PARCEL_LINE);
       if (map.getSource(PARCEL_SOURCE)) map.removeSource(PARCEL_SOURCE);
     } catch {
       // layer/source may not exist
     }
+    removeGhostMarker();
     setCentroid(null);
     setParcelCount(0);
   }
 
+  function handleParcelHover(e: MapAny) {
+    const map = getMap() as MapAny;
+    if (!map || !e.features?.length) return;
+    map.getCanvas().style.cursor = "pointer";
+    // Highlight hovered feature
+    map.setFilter(PARCEL_FILL_HOVER, [
+      "==",
+      ["get", "parcel_pfi"],
+      e.features[0].properties?.parcel_pfi ?? "",
+    ]);
+  }
+
+  function handleParcelLeave() {
+    const map = getMap() as MapAny;
+    if (!map) return;
+    map.getCanvas().style.cursor = "";
+    map.setFilter(PARCEL_FILL_HOVER, ["==", ["get", "parcel_pfi"], ""]);
+  }
+
+  function handleParcelClick(e: MapAny) {
+    if (!e.features?.length) return;
+    const feature = e.features[0];
+    const c = computeCentroid(feature as GeoJSON.Feature);
+    setCentroid(c);
+    addGhostMarker(c[0], c[1]);
+  }
+
   function addParcelLayers(geojson: GeoJSON.FeatureCollection) {
-    const map = getMap() as {
-      addSource(id: string, source: Record<string, unknown>): void;
-      addLayer(layer: Record<string, unknown>): void;
-    } | null;
+    const map = getMap() as MapAny;
     if (!map) return;
 
     clearParcelLayers();
@@ -113,18 +168,30 @@ export function AddressSearch({ controller, onPlaceModel }: AddressSearchProps) 
       data: geojson,
     });
 
-    // Fill layer (semi-transparent)
+    // Base fill (semi-transparent)
     map.addLayer({
       id: PARCEL_FILL,
       type: "fill",
       source: PARCEL_SOURCE,
       paint: {
         "fill-color": "#3b82f6",
-        "fill-opacity": 0.25,
+        "fill-opacity": 0.15,
       },
     });
 
-    // Outline layer
+    // Hover highlight fill (brighter on hover)
+    map.addLayer({
+      id: PARCEL_FILL_HOVER,
+      type: "fill",
+      source: PARCEL_SOURCE,
+      paint: {
+        "fill-color": "#60a5fa",
+        "fill-opacity": 0.45,
+      },
+      filter: ["==", ["get", "parcel_pfi"], ""],
+    });
+
+    // Outline
     map.addLayer({
       id: PARCEL_LINE,
       type: "line",
@@ -134,6 +201,11 @@ export function AddressSearch({ controller, onPlaceModel }: AddressSearchProps) 
         "line-width": 2,
       },
     });
+
+    // Wire hover/click events
+    map.on("mousemove", PARCEL_FILL, handleParcelHover);
+    map.on("mouseleave", PARCEL_FILL, handleParcelLeave);
+    map.on("click", PARCEL_FILL, handleParcelClick);
   }
 
   async function handleSelect(result: GeocodingResult) {
@@ -156,19 +228,22 @@ export function AddressSearch({ controller, onPlaceModel }: AddressSearchProps) 
           addParcelLayers(fc);
           const c = computeCentroid(fc.features[0]);
           setCentroid(c);
+          addGhostMarker(c[0], c[1]);
         } else {
           clearParcelLayers();
-          // No parcels found — use search result as centroid
           setCentroid([result.lon, result.lat]);
+          addGhostMarker(result.lon, result.lat);
         }
       } catch {
         clearParcelLayers();
         setCentroid([result.lon, result.lat]);
+        addGhostMarker(result.lon, result.lat);
       } finally {
         setLoadingParcels(false);
       }
     } else {
       setCentroid([result.lon, result.lat]);
+      addGhostMarker(result.lon, result.lat);
     }
   }
 
