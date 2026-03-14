@@ -20,6 +20,8 @@ import {
   EyeOff,
   Building2,
 } from "lucide-react";
+import { ViewCube } from "@/components/ViewCube";
+import type { CubeFace } from "@/components/ViewCube";
 import { useGlbUpload } from "@/hooks/useGlbUpload";
 import type { MapInitOptions } from "@/lib/map3d";
 import { AddressSearch } from "@/components/AddressSearch";
@@ -101,6 +103,18 @@ export function MapViewer({ modelUrl, sceneId, editable = true, onSceneSaved }: 
   /* ── Building toggle ── */
   const buildingToggleEnabled = process.env.NEXT_PUBLIC_ENABLE_BUILDING_TOGGLE !== "false";
   const [buildingsVisible, setBuildingsVisible] = useState(true);
+
+  /* ── Camera state for ViewCube ── */
+  const viewCubeEnabled = process.env.NEXT_PUBLIC_ENABLE_VIEWCUBE !== "false";
+  const parcelOrbitEnabled = process.env.NEXT_PUBLIC_ENABLE_PARCEL_ORBIT !== "false";
+  const [mapBearing, setMapBearing] = useState(0);
+  const [mapPitch, setMapPitch] = useState(60);
+
+  /* ── Drag-to-move refs ── */
+  const isDraggingRef = useRef(false);
+  const rafRef = useRef<number | null>(null);
+  const mouseDownPosRef = useRef<{ x: number; y: number } | null>(null);
+  const wasDragRef = useRef(false);
 
   const selected = models.find((m) => m.id === selectedId) ?? null;
   const addressSearchEnabled = process.env.NEXT_PUBLIC_ENABLE_ADDRESS_SEARCH !== "false";
@@ -230,6 +244,22 @@ export function MapViewer({ modelUrl, sceneId, editable = true, onSceneSaved }: 
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  /* ── Camera state tracking for ViewCube ── */
+  useEffect(() => {
+    const ctrl = controllerRef.current;
+    if (!ctrl || loading) return;
+    ctrl.onCameraMove((state) => {
+      setMapBearing(state.bearing);
+      setMapPitch(state.pitch);
+    });
+    // Init with current values
+    setMapBearing(ctrl.getBearing());
+    setMapPitch(ctrl.getPitch());
+    return () => {
+      ctrl.onCameraMove(null);
+    };
+  }, [loading]);
+
   /* ── Place-mode: click handler, cursor, zoom, mousemove ── */
   useEffect(() => {
     const ctrl = controllerRef.current;
@@ -264,8 +294,12 @@ export function MapViewer({ modelUrl, sceneId, editable = true, onSceneSaved }: 
         }
       });
 
-      // Click to place
+      // Click to place (skip if we just finished a drag)
       ctrl.setClickHandler((lngLat) => {
+        if (wasDragRef.current) {
+          wasDragRef.current = false;
+          return;
+        }
         ctrl.modifyModel(selectedId, { lng: lngLat.lng, lat: lngLat.lat });
         setModels((prev) =>
           prev.map((m) =>
@@ -290,23 +324,75 @@ export function MapViewer({ modelUrl, sceneId, editable = true, onSceneSaved }: 
     }
   }, [pickOnClick, selectedId, selectedParcel]);
 
-  /* ── Arrow key nudge in place-mode ── */
+  /* ── Unified keyboard handler: move, rotate, orbit ── */
   useEffect(() => {
-    if (!pickOnClick || !selectedId) return;
-    const NUDGE = 0.000001; // ~0.1m
+    const NUDGE_NORMAL = 0.000002; // ~0.2m
+    const NUDGE_FINE = 0.0000005; // ~0.05m
+    const NUDGE_COARSE = 0.00001; // ~1.0m
+    const ROTATE_NORMAL = 5;
+    const ROTATE_FINE = 1;
+    const ORBIT_STEP = 10;
 
     function handleKeyDown(e: KeyboardEvent) {
-      // Skip when input/textarea focused
       const tag = (e.target as HTMLElement)?.tagName;
       if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
 
+      const ctrl = controllerRef.current;
+      if (!ctrl) return;
+
+      // Q/E — orbit around selected model (or just rotate map if none)
+      if (e.key.toLowerCase() === "q" || e.key.toLowerCase() === "e") {
+        e.preventDefault();
+        const delta = e.key.toLowerCase() === "q" ? -ORBIT_STEP : ORBIT_STEP;
+        const sel = models.find((m) => m.id === selectedId);
+        ctrl.easeTo({
+          bearing: ctrl.getBearing() + delta,
+          ...(sel ? { center: [sel.lng, sel.lat] as [number, number] } : {}),
+          duration: 300,
+        });
+        return;
+      }
+
+      // Remaining keys require a selected model
+      if (!selectedId) return;
+
+      // R/F — rotate model heading
+      if (e.key.toLowerCase() === "r") {
+        e.preventDefault();
+        const step = e.shiftKey ? ROTATE_FINE : ROTATE_NORMAL;
+        setModels((prev) =>
+          prev.map((m) => {
+            if (m.id !== selectedId) return m;
+            const newHeading = (m.heading + step) % 360;
+            ctrl.modifyModel(selectedId, { heading: newHeading });
+            return { ...m, heading: newHeading };
+          }),
+        );
+        return;
+      }
+      if (e.key.toLowerCase() === "f") {
+        e.preventDefault();
+        const step = e.shiftKey ? ROTATE_FINE : ROTATE_NORMAL;
+        setModels((prev) =>
+          prev.map((m) => {
+            if (m.id !== selectedId) return m;
+            const newHeading = (m.heading - step + 360) % 360;
+            ctrl.modifyModel(selectedId, { heading: newHeading });
+            return { ...m, heading: newHeading };
+          }),
+        );
+        return;
+      }
+
+      // Arrow keys — move model
+      const nudge = e.shiftKey ? NUDGE_FINE : e.altKey ? NUDGE_COARSE : NUDGE_NORMAL;
       let dLng = 0;
       let dLat = 0;
       switch (e.key) {
-        case "ArrowLeft": dLng = -NUDGE; break;
-        case "ArrowRight": dLng = NUDGE; break;
-        case "ArrowUp": dLat = NUDGE; break;
-        case "ArrowDown": dLat = -NUDGE; break;
+        case "ArrowLeft": dLng = -nudge; break;
+        case "ArrowRight": dLng = nudge; break;
+        case "ArrowUp": dLat = nudge; break;
+        case "ArrowDown": dLat = -nudge; break;
         default: return;
       }
       e.preventDefault();
@@ -316,7 +402,7 @@ export function MapViewer({ modelUrl, sceneId, editable = true, onSceneSaved }: 
           if (m.id !== selectedId) return m;
           const newLng = m.lng + dLng;
           const newLat = m.lat + dLat;
-          controllerRef.current?.modifyModel(selectedId, { lng: newLng, lat: newLat });
+          ctrl.modifyModel(selectedId, { lng: newLng, lat: newLat });
           return { ...m, lng: newLng, lat: newLat };
         }),
       );
@@ -324,6 +410,80 @@ export function MapViewer({ modelUrl, sceneId, editable = true, onSceneSaved }: 
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [selectedId, models]);
+
+  /* ── Drag-to-move model in place-mode ── */
+  useEffect(() => {
+    const ctrl = controllerRef.current;
+    if (!ctrl || !pickOnClick || !selectedId) return;
+
+    const canvas = (ctrl.getMapInstance() as { getCanvas: () => HTMLCanvasElement }).getCanvas();
+    if (!canvas) return;
+
+    const DRAG_THRESHOLD = 3;
+
+    function handleMouseDown(e: MouseEvent) {
+      if (e.button !== 0) return; // left click only
+      mouseDownPosRef.current = { x: e.clientX, y: e.clientY };
+      isDraggingRef.current = false;
+      wasDragRef.current = false;
+    }
+
+    function handleMouseMove(e: MouseEvent) {
+      if (!mouseDownPosRef.current) return;
+      const dx = e.clientX - mouseDownPosRef.current.x;
+      const dy = e.clientY - mouseDownPosRef.current.y;
+
+      if (!isDraggingRef.current && Math.sqrt(dx * dx + dy * dy) > DRAG_THRESHOLD) {
+        isDraggingRef.current = true;
+        ctrl!.setDragPanEnabled(false);
+      }
+
+      if (!isDraggingRef.current) return;
+
+      // Throttle with rAF
+      if (rafRef.current !== null) return;
+      rafRef.current = requestAnimationFrame(() => {
+        rafRef.current = null;
+        // Convert screen coords to lngLat via map
+        const map = ctrl!.getMapInstance() as { unproject: (pt: [number, number]) => { lng: number; lat: number } };
+        const lngLat = map.unproject([e.clientX - canvas.getBoundingClientRect().left, e.clientY - canvas.getBoundingClientRect().top]);
+        ctrl!.modifyModel(selectedId!, { lng: lngLat.lng, lat: lngLat.lat });
+        setModels((prev) =>
+          prev.map((m) =>
+            m.id === selectedId ? { ...m, lng: lngLat.lng, lat: lngLat.lat } : m,
+          ),
+        );
+      });
+    }
+
+    function handleMouseUp() {
+      if (isDraggingRef.current) {
+        wasDragRef.current = true;
+        ctrl!.setDragPanEnabled(true);
+      }
+      isDraggingRef.current = false;
+      mouseDownPosRef.current = null;
+      if (rafRef.current !== null) {
+        cancelAnimationFrame(rafRef.current);
+        rafRef.current = null;
+      }
+    }
+
+    canvas.addEventListener("mousedown", handleMouseDown);
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
+
+    return () => {
+      canvas.removeEventListener("mousedown", handleMouseDown);
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+      if (rafRef.current !== null) {
+        cancelAnimationFrame(rafRef.current);
+        rafRef.current = null;
+      }
+      ctrl.setDragPanEnabled(true);
+    };
   }, [pickOnClick, selectedId]);
 
   /* ── Model actions ── */
@@ -439,6 +599,69 @@ export function MapViewer({ modelUrl, sceneId, editable = true, onSceneSaved }: 
       prev.map((m) => (m.id === selectedId ? { ...m, ...props } : m)),
     );
   }
+
+  /* ── ViewCube face → camera preset ── */
+  const handleCubeFace = useCallback(
+    (face: CubeFace, zoomBoost = 0) => {
+      const ctrl = controllerRef.current;
+      if (!ctrl) return;
+
+      // Center on selected model or current map center
+      const center: [number, number] = selected
+        ? [selected.lng, selected.lat]
+        : (() => { const c = ctrl.getCenter(); return [c.lng, c.lat] as [number, number]; })();
+      const currentBearing = ctrl.getBearing();
+      const zoom = ctrl.getZoom() + zoomBoost;
+
+      const presets: Record<CubeFace, { bearing: number; pitch: number }> = {
+        top: { bearing: currentBearing, pitch: 0 },
+        bottom: { bearing: currentBearing, pitch: 85 },
+        front: { bearing: 0, pitch: 60 },
+        back: { bearing: 180, pitch: 60 },
+        left: { bearing: -90, pitch: 60 },
+        right: { bearing: 90, pitch: 60 },
+      };
+
+      const preset = presets[face];
+      ctrl.easeTo({ center, zoom, bearing: preset.bearing, pitch: preset.pitch, duration: 600 });
+    },
+    [selected],
+  );
+
+  const handleCubeHome = useCallback(() => {
+    const ctrl = controllerRef.current;
+    if (!ctrl) return;
+    const center: [number, number] = selected
+      ? [selected.lng, selected.lat]
+      : (() => { const c = ctrl.getCenter(); return [c.lng, c.lat] as [number, number]; })();
+    ctrl.easeTo({ center, bearing: -30, pitch: 60, duration: 600 });
+  }, [selected]);
+
+  /* ── Align bearing to longest parcel edge ── */
+  const alignToLongestEdge = useCallback(() => {
+    const ctrl = controllerRef.current;
+    if (!ctrl || !selectedParcel) return;
+
+    const geom = selectedParcel.geometry;
+    if (geom.type !== "Polygon" && geom.type !== "MultiPolygon") return;
+
+    const coords = geom.type === "Polygon" ? geom.coordinates[0] : geom.coordinates[0][0];
+    if (!coords || coords.length < 2) return;
+
+    let maxDist = 0;
+    let bestAngle = 0;
+    for (let i = 0; i < coords.length - 1; i++) {
+      const dx = coords[i + 1][0] - coords[i][0];
+      const dy = coords[i + 1][1] - coords[i][1];
+      const dist = dx * dx + dy * dy;
+      if (dist > maxDist) {
+        maxDist = dist;
+        bestAngle = Math.atan2(dx, dy) * (180 / Math.PI); // bearing angle
+      }
+    }
+
+    ctrl.easeTo({ bearing: -bestAngle, duration: 600 });
+  }, [selectedParcel]);
 
   return (
     <div className="relative w-full" style={{ height: "100%" }}>
@@ -946,6 +1169,39 @@ export function MapViewer({ modelUrl, sceneId, editable = true, onSceneSaved }: 
           </div>
         </div>
       </div>
+
+      {/* ── ViewCube + orbit (bottom-right, compact) ── */}
+      {viewCubeEnabled && !loading && (
+        <div className="absolute bottom-14 right-4 z-20">
+          <ViewCube
+            bearing={mapBearing}
+            pitch={mapPitch}
+            onFaceClick={(face) => handleCubeFace(face)}
+            onFaceDblClick={(face) => handleCubeFace(face, 2)}
+            onHomeClick={handleCubeHome}
+            onOrbitLeft={() => {
+              const ctrl = controllerRef.current;
+              if (!ctrl) return;
+              ctrl.easeTo({
+                bearing: ctrl.getBearing() - 10,
+                ...(selected ? { center: [selected.lng, selected.lat] as [number, number] } : {}),
+                duration: 300,
+              });
+            }}
+            onOrbitRight={() => {
+              const ctrl = controllerRef.current;
+              if (!ctrl) return;
+              ctrl.easeTo({
+                bearing: ctrl.getBearing() + 10,
+                ...(selected ? { center: [selected.lng, selected.lat] as [number, number] } : {}),
+                duration: 300,
+              });
+            }}
+            showAlignEdge={parcelOrbitEnabled && !!selectedParcel}
+            onAlignEdge={alignToLongestEdge}
+          />
+        </div>
+      )}
 
       {/* ── Save Scene form (admin) ── */}
       {editable && showSaveForm && (

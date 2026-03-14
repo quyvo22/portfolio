@@ -35,6 +35,9 @@ export interface MapController {
   flyTo(lngLat: { lng: number; lat: number }, zoom?: number): void;
   setCrosshairCursor(enabled: boolean): void;
   setBuildingsVisible(visible: boolean): void;
+  easeTo(opts: { center?: [number, number]; zoom?: number; pitch?: number; bearing?: number; duration?: number }): void;
+  setDragPanEnabled(enabled: boolean): void;
+  onCameraMove(cb: ((state: { bearing: number; pitch: number }) => void) | null): void;
   getMapInstance(): unknown;
   destroy(): void;
 }
@@ -210,6 +213,37 @@ export async function initMap(
                 try {
                   map.setLayoutProperty(layer.id, "visibility", vis);
                 } catch { /* noop */ }
+              }
+            }
+          },
+
+          easeTo(opts) {
+            const o: Record<string, unknown> = { duration: opts.duration ?? 600 };
+            if (opts.center !== undefined) o.center = opts.center;
+            if (opts.zoom !== undefined) o.zoom = opts.zoom;
+            if (opts.pitch !== undefined) o.pitch = opts.pitch;
+            if (opts.bearing !== undefined) o.bearing = opts.bearing;
+            map.easeTo(o as Parameters<typeof map.easeTo>[0]);
+          },
+
+          setDragPanEnabled(enabled) {
+            if (enabled) {
+              map.dragPan.enable();
+            } else {
+              map.dragPan.disable();
+            }
+          },
+
+          onCameraMove(cb) {
+            if (cb) {
+              const handler = () => cb({ bearing: map.getBearing(), pitch: map.getPitch() });
+              map.on("move", handler);
+              (map as unknown as Record<string, unknown>).__cameraMoveHandler = handler;
+            } else {
+              const prev = (map as unknown as Record<string, unknown>).__cameraMoveHandler as (() => void) | undefined;
+              if (prev) {
+                map.off("move", prev);
+                delete (map as unknown as Record<string, unknown>).__cameraMoveHandler;
               }
             }
           },

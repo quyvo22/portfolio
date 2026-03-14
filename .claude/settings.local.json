@@ -9,7 +9,12 @@
       "Bash(find:*)",
       "Bash(ls:*)",
       "Bash(npx tsc:*)",
-      "WebSearch"
+      "WebSearch",
+      "Bash(git push:*)",
+      "WebFetch(domain:api.github.com)",
+      "Bash(cmd.exe /c start \"\" \"https://portfolio-sage-eight-whcyecrkql.vercel.app/maps/glb-on-map\")",
+      "Bash(cmd.exe /c start \"\" \"http://localhost:3000/portfolio\")",
+      "Bash(tasklist:*)"
     ]
   }
 }
