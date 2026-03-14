@@ -21,18 +21,18 @@ const fontSans = Source_Sans_3({
 
 export const metadata: Metadata = {
   title: {
-    default: "Portfolio Studio — Thiết kế & Kiến trúc",
-    template: "%s | Portfolio Studio",
+    default: "QuyVo — Design & Architecture",
+    template: "%s | QuyVo",
   },
   description:
-    "Portfolio kiến trúc với trình xem PDF & 3D tương tác. Trưng bày dự án, bản vẽ kỹ thuật và mô hình ba chiều.",
+    "Architecture portfolio featuring interactive PDF & 3D viewers. Showcasing projects, technical drawings, and three-dimensional models.",
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"),
   openGraph: {
     type: "website",
-    locale: "vi_VN",
-    siteName: "Portfolio Studio",
-    title: "Portfolio Studio — Thiết kế & Kiến trúc",
-    description: "Portfolio kiến trúc với trình xem PDF & 3D tương tác.",
+    locale: "en_US",
+    siteName: "QuyVo",
+    title: "QuyVo — Design & Architecture",
+    description: "Architecture portfolio with interactive PDF & 3D viewers.",
     images: [{ url: "/og-placeholder.svg", width: 1200, height: 630 }],
   },
   robots: { index: true, follow: true },
@@ -57,7 +57,7 @@ export default async function RootLayout({
         >
           <NextIntlClientProvider messages={messages}>
             <a href="#main-content" className="skip-link">
-              Chuyển đến nội dung chính
+              Skip to main content
             </a>
             <Header />
             <main id="main-content" role="main" className="min-h-[80vh]">

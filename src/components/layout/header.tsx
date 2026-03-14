@@ -4,21 +4,24 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { Menu, X } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "./theme-toggle";
 import { LanguageToggle } from "./language-toggle";
 
-const navLinks = [
-  { href: "/", label: "Trang chủ" },
-  { href: "/portfolio", label: "Dự án" },
-  { href: "/maps", label: "Maps" },
-  { href: "/blog", label: "Bài viết" },
-  { href: "/about", label: "Giới thiệu" },
-];
+const navKeys = [
+  { href: "/", key: "home" },
+  { href: "/portfolio", key: "portfolio" },
+  { href: "/maps", key: "maps" },
+  { href: "/blog", key: "blog" },
+  { href: "/about", key: "about" },
+] as const;
 
 export function Header() {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const t = useTranslations("nav");
+  const tc = useTranslations("common");
 
   return (
     <header
@@ -36,15 +39,15 @@ export function Header() {
             href="/"
             className="font-serif text-xl font-bold tracking-tight hover:text-accent-600 transition-colors"
           >
-            Portfolio<span className="text-accent-500">.</span>
+            QuyVo<span className="text-accent-500">.</span>
           </Link>
 
           {/* Desktop Nav */}
           <nav
-            aria-label="Điều hướng chính"
+            aria-label="Main navigation"
             className="hidden md:flex items-center gap-1"
           >
-            {navLinks.map((link) => {
+            {navKeys.map((link) => {
               const isActive =
                 link.href === "/"
                   ? pathname === "/"
@@ -61,7 +64,7 @@ export function Header() {
                   )}
                   aria-current={isActive ? "page" : undefined}
                 >
-                  {link.label}
+                  {t(link.key)}
                 </Link>
               );
             })}
@@ -80,14 +83,14 @@ export function Header() {
                 "transition-colors duration-200"
               )}
             >
-              Admin
+              {t("admin")}
             </Link>
 
             {/* Mobile toggle */}
             <button
               onClick={() => setMobileOpen(!mobileOpen)}
               className="md:hidden w-9 h-9 flex items-center justify-center rounded-lg text-ink-muted hover:text-ink hover:bg-surface-overlay transition-colors"
-              aria-label={mobileOpen ? "Đóng menu" : "Mở menu"}
+              aria-label={mobileOpen ? tc("closeMenu") : tc("openMenu")}
               aria-expanded={mobileOpen}
             >
               {mobileOpen ? <X size={20} /> : <Menu size={20} />}
@@ -98,11 +101,11 @@ export function Header() {
         {/* Mobile Nav */}
         {mobileOpen && (
           <nav
-            aria-label="Điều hướng di động"
+            aria-label="Mobile navigation"
             className="md:hidden py-4 border-t border-border"
           >
             <div className="flex flex-col gap-1">
-              {[...navLinks, { href: "/admin", label: "Admin" }].map(
+              {[...navKeys, { href: "/admin" as const, key: "admin" as const }].map(
                 (link) => {
                   const isActive =
                     link.href === "/"
@@ -121,7 +124,7 @@ export function Header() {
                       )}
                       aria-current={isActive ? "page" : undefined}
                     >
-                      {link.label}
+                      {t(link.key)}
                     </Link>
                   );
                 }

@@ -1,25 +1,23 @@
 import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 import { getPublishedProjects } from "@/lib/data";
 import { PortfolioFilter } from "@/components/ui/portfolio-filter";
 
-export const metadata: Metadata = {
-  title: "Danh mục dự án",
-  description:
-    "Tổng hợp các dự án thiết kế, bản vẽ kỹ thuật và mô hình 3D.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("portfolio");
+  return {
+    title: t("title"),
+    description: t("description"),
+  };
+}
 
 export const dynamic = "force-dynamic";
 
 export default async function PortfolioPage() {
   const projects = await getPublishedProjects();
+
   return (
-    <section className="grid-container py-16">
-      <div className="mb-10">
-        <h1>Danh mục dự án</h1>
-        <p className="mt-2 text-ink-muted max-w-xl">
-          Tổng hợp các dự án thiết kế, bản vẽ kỹ thuật và mô hình 3D.
-        </p>
-      </div>
+    <section className="w-full max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-10">
       <PortfolioFilter projects={projects} />
     </section>
   );

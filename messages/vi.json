@@ -2,23 +2,48 @@
   "nav": {
     "home": "Trang chủ",
     "portfolio": "Dự án",
+    "maps": "Bản đồ",
     "blog": "Bài viết",
     "about": "Giới thiệu",
     "admin": "Quản trị",
     "skipToContent": "Chuyển đến nội dung chính"
   },
   "home": {
+    "heroLabel": "Kiến trúc & Thiết kế số",
     "heroTitle": "Thiết kế & Sáng tạo",
-    "heroSubtitle": "Portfolio kiến trúc — nơi trưng bày các dự án PDF & 3D với trải nghiệm tương tác đầy đủ.",
+    "heroHighlight": "với Độ chính xác",
+    "heroSubtitle": "Từ bản vẽ kỹ thuật BIM đến hình ảnh 3D chân thực — đẩy nhanh phê duyệt và giảm sửa đổi với hồ sơ chuẩn thi công.",
+    "heroCta": "Khám phá dự án →",
+    "heroCtaSecondary": "Về QuyVo",
     "featuredProjects": "Dự án nổi bật",
-    "viewAll": "Xem tất cả"
+    "featuredSubtitle": "Một số dự án tiêu biểu từ danh mục thiết kế",
+    "viewAll": "Xem tất cả",
+    "viewAllProjects": "Xem tất cả dự án",
+    "skillsTitle": "Dịch vụ",
+    "skillArchitecture": "Kiến trúc",
+    "skillArchitectureDesc": "Thiết kế ý tưởng đến hồ sơ thi công",
+    "skill3d": "Mô hình 3D",
+    "skill3dDesc": "Mô hình chi tiết cho trực quan hóa và sản xuất",
+    "skillDrawing": "Bản vẽ kỹ thuật",
+    "skillDrawingDesc": "Bản vẽ CAD chính xác và tài liệu kỹ thuật",
+    "skillDesign": "Thiết kế",
+    "skillDesignDesc": "Giải pháp sáng tạo cho các thách thức không gian và thị giác",
+    "ctaTitle": "Hợp tác cùng nhau",
+    "ctaSubtitle": "Bạn có dự án? Tôi rất muốn nghe về nó.",
+    "ctaButton": "Liên hệ"
   },
   "portfolio": {
     "title": "Danh mục dự án",
     "description": "Tổng hợp các dự án thiết kế, bản vẽ kỹ thuật và mô hình 3D.",
-    "filterAll": "Tất cả",
+    "filterAll": "Tất cả dự án",
     "filterPdf": "Bản vẽ PDF",
-    "filter3d": "Mô hình 3D"
+    "filter3d": "Mô hình 3D",
+    "sortNewest": "Mới nhất",
+    "sortOldest": "Cũ nhất",
+    "noResults": "Không tìm thấy dự án phù hợp.",
+    "latestProjects": "Dự án mới nhất",
+    "popularTags": "Tags phổ biến",
+    "projectCount": "dự án"
   },
   "project": {
     "viewPdf": "Xem bản vẽ",
@@ -45,10 +70,16 @@
     "lightMode": "Chế độ sáng",
     "darkMode": "Chế độ tối",
     "language": "Ngôn ngữ",
-    "loading": "Đang tải..."
+    "loading": "Đang tải...",
+    "openMenu": "Mở menu",
+    "closeMenu": "Đóng menu"
   },
   "footer": {
-    "copyright": "© 2025 Portfolio Studio. Mọi quyền được bảo lưu.",
+    "tagline": "Kiến trúc. Kỹ thuật. Đổi mới.",
+    "navigation": "Điều hướng",
+    "contact": "Liên hệ",
+    "location": "TP. Hồ Chí Minh, Việt Nam",
+    "copyright": "© 2026 QuyVo. Mọi quyền được bảo lưu.",
     "builtWith": "Xây dựng với Next.js & TypeScript"
   }
 }

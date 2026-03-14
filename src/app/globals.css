@@ -88,13 +88,15 @@
   }
 
   .card {
-    @apply bg-surface-raised border border-border rounded-xl overflow-hidden
-           transition-all duration-300 ease-out;
+    @apply bg-surface-raised border border-border rounded-2xl overflow-hidden
+           transition-all duration-300 ease-out shadow-sm;
   }
 
   .card:hover {
-    @apply shadow-lg border-[hsl(var(--ring))]/40;
-    transform: translateY(-2px);
+    @apply shadow-md;
+    --tw-ring-offset-shadow: var(--tw-ring-inset) 0 0 0 var(--tw-ring-offset-width) var(--tw-ring-offset-color);
+    --tw-ring-shadow: var(--tw-ring-inset) 0 0 0 calc(2px + var(--tw-ring-offset-width)) rgba(0,0,0,0.05);
+    box-shadow: var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);
   }
 
   @media (prefers-reduced-motion: reduce) {

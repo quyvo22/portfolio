@@ -2,23 +2,48 @@
   "nav": {
     "home": "Home",
     "portfolio": "Portfolio",
+    "maps": "Maps",
     "blog": "Blog",
     "about": "About",
     "admin": "Admin",
     "skipToContent": "Skip to main content"
   },
   "home": {
+    "heroLabel": "Architecture & Digital Design",
     "heroTitle": "Design & Create",
-    "heroSubtitle": "Architecture portfolio — showcasing PDF & 3D projects with full interactive experience.",
+    "heroHighlight": "with Precision",
+    "heroSubtitle": "From BIM-ready technical drawings to photoreal 3D visuals — accelerate approvals and reduce rework with production-grade documentation.",
+    "heroCta": "Explore Projects →",
+    "heroCtaSecondary": "About QuyVo",
     "featuredProjects": "Featured Projects",
-    "viewAll": "View all"
+    "featuredSubtitle": "A selection of standout projects from the design portfolio",
+    "viewAll": "View all",
+    "viewAllProjects": "View all projects",
+    "skillsTitle": "What I Do",
+    "skillArchitecture": "Architecture",
+    "skillArchitectureDesc": "Concept design through to construction documentation",
+    "skill3d": "3D Modeling",
+    "skill3dDesc": "Detailed models for visualization and fabrication",
+    "skillDrawing": "Technical Drawing",
+    "skillDrawingDesc": "Precise CAD drawings and technical documentation",
+    "skillDesign": "Design",
+    "skillDesignDesc": "Creative solutions for spatial and visual challenges",
+    "ctaTitle": "Let's Work Together",
+    "ctaSubtitle": "Have a project in mind? I'd love to hear about it.",
+    "ctaButton": "Get In Touch"
   },
   "portfolio": {
     "title": "Project Portfolio",
     "description": "A collection of design projects, technical drawings, and 3D models.",
-    "filterAll": "All",
+    "filterAll": "All Projects",
     "filterPdf": "PDF Drawings",
-    "filter3d": "3D Models"
+    "filter3d": "3D Models",
+    "sortNewest": "Newest",
+    "sortOldest": "Oldest",
+    "noResults": "No matching projects found.",
+    "latestProjects": "Latest Projects",
+    "popularTags": "Popular Tags",
+    "projectCount": "projects"
   },
   "project": {
     "viewPdf": "View Drawing",
@@ -45,10 +70,16 @@
     "lightMode": "Light mode",
     "darkMode": "Dark mode",
     "language": "Language",
-    "loading": "Loading..."
+    "loading": "Loading...",
+    "openMenu": "Open menu",
+    "closeMenu": "Close menu"
   },
   "footer": {
-    "copyright": "© 2025 Portfolio Studio. All rights reserved.",
+    "tagline": "Architecture. Engineering. Innovation.",
+    "navigation": "Navigation",
+    "contact": "Contact",
+    "location": "Ho Chi Minh City, Vietnam",
+    "copyright": "© 2026 QuyVo. All rights reserved.",
     "builtWith": "Built with Next.js & TypeScript"
   }
 }
