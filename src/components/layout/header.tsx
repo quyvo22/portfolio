@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { Menu, X } from "lucide-react";
@@ -28,53 +29,29 @@ export function Header() {
       role="banner"
       className={cn(
         "sticky top-0 z-50 w-full",
-        "border-b border-border bg-surface/80 backdrop-blur-md",
+        "border-b border-border bg-surface/95 backdrop-blur-md",
         "transition-colors duration-300"
       )}
     >
-      <div className="grid-container">
-        <div className="flex h-16 items-center justify-between">
-          {/* Logo */}
-          <Link
-            href="/"
-            className="font-serif text-xl font-bold tracking-tight hover:text-accent-600 transition-colors"
-          >
-            QuyVo<span className="text-accent-500">.</span>
+      <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* ── Row 1: Logo (centered) + mobile toggle + utility actions ── */}
+        <div className="relative flex items-center justify-center py-4">
+          {/* Logo — centered */}
+          <Link href="/" className="flex flex-col items-center">
+            <Image
+              src="/logo.png"
+              alt="QuyVo"
+              width={120}
+              height={120}
+              className="h-20 w-auto sm:h-24 dark:invert"
+              priority
+            />
           </Link>
 
-          {/* Desktop Nav */}
-          <nav
-            aria-label="Main navigation"
-            className="hidden md:flex items-center gap-1"
-          >
-            {navKeys.map((link) => {
-              const isActive =
-                link.href === "/"
-                  ? pathname === "/"
-                  : pathname.startsWith(link.href);
-              return (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  className={cn(
-                    "px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-200",
-                    isActive
-                      ? "text-accent-600 bg-accent-50 dark:text-accent-400 dark:bg-accent-950/40"
-                      : "text-ink-muted hover:text-ink hover:bg-surface-overlay"
-                  )}
-                  aria-current={isActive ? "page" : undefined}
-                >
-                  {t(link.key)}
-                </Link>
-              );
-            })}
-          </nav>
-
-          {/* Actions */}
-          <div className="flex items-center gap-1">
+          {/* Utility actions — absolute right */}
+          <div className="absolute right-0 top-1/2 -translate-y-1/2 flex items-center gap-1">
             <LanguageToggle />
             <ThemeToggle />
-
             <Link
               href="/admin"
               className={cn(
@@ -85,7 +62,6 @@ export function Header() {
             >
               {t("admin")}
             </Link>
-
             {/* Mobile toggle */}
             <button
               onClick={() => setMobileOpen(!mobileOpen)}
@@ -98,13 +74,46 @@ export function Header() {
           </div>
         </div>
 
-        {/* Mobile Nav */}
+        {/* ── Row 2: Slogan (centered) ── */}
+        <p className="text-center text-[11px] sm:text-xs tracking-[0.2em] uppercase text-ink-faint font-medium -mt-2 pb-3">
+          {t("slogan")}
+        </p>
+
+        {/* ── Row 3: Navigation bar (centered, desktop) ── */}
+        <nav
+          aria-label="Main navigation"
+          className="hidden md:flex items-center justify-center gap-1 border-t border-border py-2"
+        >
+          {navKeys.map((link) => {
+            const isActive =
+              link.href === "/"
+                ? pathname === "/"
+                : pathname.startsWith(link.href);
+            return (
+              <Link
+                key={link.href}
+                href={link.href}
+                className={cn(
+                  "px-4 py-1.5 text-[13px] font-medium tracking-wide uppercase transition-colors duration-200",
+                  isActive
+                    ? "text-ink border-b-2 border-accent-500"
+                    : "text-ink-muted hover:text-ink"
+                )}
+                aria-current={isActive ? "page" : undefined}
+              >
+                {t(link.key)}
+              </Link>
+            );
+          })}
+        </nav>
+
+        {/* ── Mobile Nav (dropdown) ── */}
         {mobileOpen && (
           <nav
             aria-label="Mobile navigation"
-            className="md:hidden py-4 border-t border-border"
+            className="md:hidden py-3 border-t border-border"
           >
-            <div className="flex flex-col gap-1">
+            <div className="flex flex-col items-center gap-1">
               {[...navKeys, { href: "/admin" as const, key: "admin" as const }].map(
                 (link) => {
                   const isActive =
@@ -117,9 +126,9 @@ export function Header() {
                       href={link.href}
                       onClick={() => setMobileOpen(false)}
                       className={cn(
-                        "px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
+                        "px-4 py-2 rounded-lg text-sm font-medium tracking-wide uppercase transition-colors",
                         isActive
-                          ? "text-accent-600 bg-accent-50 dark:text-accent-400 dark:bg-accent-950/40"
+                          ? "text-ink border-b-2 border-accent-500"
                           : "text-ink-muted hover:text-ink hover:bg-surface-overlay"
                       )}
                       aria-current={isActive ? "page" : undefined}
